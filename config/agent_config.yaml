@@ -1,0 +1,27 @@
+# Agent 配置文件
+
+# 模型配置
+model:
+  provider: "openai"  # openai 或 anthropic
+  name: "gpt-4"
+  temperature: 0.7
+  max_tokens: 2000
+
+# Agent 配置
+agent:
+  max_iterations: 10
+  timeout: 60
+
+# 工具列表
+tools:
+  - name: "compute_metrics"
+    description: "分时段统计购电、售电、储能充放电、光伏消纳等核心指标"
+  - name: "compete_price"
+    description: "对比不同时段的购/售电价，识别峰谷套利机会"
+  - name: "calc_benefit"
+    description: "基于调度数据计算预计成本/收益，对比基准方案"
+
+# 输出配置
+output:
+  language: "zh"  # zh 或 en
+  format: "markdown"
