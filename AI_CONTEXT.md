@@ -120,8 +120,29 @@ EnerGraph/
 
 ---
 
+## 最新改动记录 (2026-05-05)
+
+### 架构优化
+1. **ReAct 模式增强**:
+   - 重命名 `call_tools_node` → `agent_node`，明确 ReAct 决策职责
+   - 添加 `next_action` 字段，预留 LLM 决策扩展点
+   - 在代码注释中标注 TODO，便于后续集成真正的 LLM Thought 循环
+
+2. **RAG 扩展支持**:
+   - `AgentState` 新增 `context` 字段（存储 RAG 检索结果）
+   - `AgentState` 新增 `history` 字段（支持多轮对话）
+   - 架构设计便于后续集成向量数据库和知识库
+
+3. **Git 仓库**:
+   - GitHub 仓库: https://github.com/Webr1ng/EnerGraph.git
+   - 分支: main
+   - 状态: 已推送初始版本
+
+---
+
 ## 注意事项
 1. **敏感信息**: 绝不提交 `.env` 文件到 Git
 2. **依赖版本**: `requirements.txt` 锁定版本号，避免环境差异
 3. **文档同步**: 每次架构调整后立即更新本文档
 4. **轻量原则**: Demo 阶段优先功能打通，避免过度工程化
+5. **ReAct 升级路径**: 当前为简化实现，集成 LLM 后可实现完整 ReAct 循环
