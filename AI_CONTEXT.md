@@ -1,7 +1,7 @@
 # EnerGraph — 家庭能源 AI 调度解释 Agent
 
 ## 项目状态
-**当前阶段**: Phase 3 — 架构重构中  
+**当前阶段**: Phase 3 — 重构完成，待 Phase 4 收尾  
 **最后更新**: 2026-05-08  
 **项目性质**: 企业级落地方案（支持上云 / 本地部署）  
 **GitHub**: https://github.com/Webr1ng/EnerGraph.git  
@@ -202,20 +202,23 @@ AgentState (TypedDict):
 - [x] Streamlit 前端 Demo（初版）
 - [x] 基础文档（README, API_INTERFACE）
 
-### 重构中（当前阶段）
-- [x] Step 1: 创建 `src/config/settings.py` 统一配置加载 ✅
-- [x] Step 2: 重构 `src/schemas/` 合并数据模型 ✅
-- [x] Step 3: 重构 `src/tools/` 添加错误处理与注册表 ✅
-- [x] Step 4: 新增 `src/agent/prompts.py` 提取 Prompt ✅
-- [x] Step 5: 新增 `src/agents/energy/nodes.py` 实现真正 ReAct ✅
-- [x] Step 6: 新增 `src/agents/energy/graph.py` 添加条件路由 ✅
-- [x] Step 7: 新增 `src/utils/report_builder.py` 提取报告逻辑 ✅
-- [x] Step 8: 重构 `src/frontend/app.py` 匹配新 API ✅
+### 重构完成 ✅
+- [x] Step 1: `src/config/settings.py` — 统一配置加载
+- [x] Step 2: `src/schemas/` — Pydantic 模型 + AgentState
+- [x] Step 3: `src/tools/` — 错误处理 + TOOL_REGISTRY
+- [x] Step 4: `src/agents/energy/prompts.py` — Prompt 模板
+- [x] Step 5: `src/agents/energy/nodes.py` — 真正 ReAct 节点
+- [x] Step 6: `src/agents/energy/graph.py` — 条件路由图
+- [x] Step 7: `src/utils/report_builder.py` — 报告生成
+- [x] Step 8: `src/frontend/app.py` — Streamlit 界面
 
-### 待办
-- [ ] 替换 Mock 工具为真实调度算法
-- [ ] 集成 RAG 知识库
-- [ ] 多语言支持
+### Phase 4 待办（下一阶段）
+- [ ] 清理旧文件（`src/agent/`、`src/models/`）
+- [ ] 更新 `README.md`（新成员 3 分钟可运行）
+- [ ] 更新 `docs/API_INTERFACE.md`
+- [ ] 配置 `.env` 填入 API Key，端到端测试
+- [ ] 替换 Mock 工具为真实调度算法（业务方负责）
+- [ ] 集成 RAG 知识库（`src/pipelines/rag_ingest.py`）
 - [ ] CI/CD 配置
 
 ---
@@ -224,6 +227,7 @@ AgentState (TypedDict):
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-05-08 | Phase 3 全部完成：Step 5-8（nodes/graph/report_builder/frontend）+ Python 3.11 环境 | 魏博源 |
 | 2026-05-08 | 中场架构审查：扩展为多 Agent 结构，新增 pipelines/memory/services 预留层 | 魏博源 |
 | 2026-05-08 | Phase 3 启动：Step 1-4 完成（config/schemas/tools/prompts） | 魏博源 |
 | 2026-05-08 | Phase 2 启动：全面架构重构计划制定，AI_CONTEXT.md 重写 | 魏博源 |
