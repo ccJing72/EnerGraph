@@ -254,11 +254,13 @@ cd EnerGraph
 
 **第二步：创建 Python 环境（必须用 conda，Python 3.11）**
 ```bash
-# Windows，Anaconda 安装在 D:\Anaconda
-D:\Anaconda\Scripts\conda.exe create -n energraph python=3.11 -y
-D:\Anaconda\Scripts\conda.exe activate energraph
+conda create -n energraph python=3.11 -y
+conda activate energraph
 pip install -r requirements.txt
 ```
+
+> Windows 用户若 `conda` 不在 PATH，需先运行 Anaconda Prompt 或手动将 conda 加入 PATH。  
+> Docker 部署直接使用 `requirements.txt`，无需 conda，见 §8。
 
 **第三步：配置环境变量**
 ```bash
@@ -390,8 +392,12 @@ git push origin main
 | 完成一个 Phase 阶段 | `AI_CONTEXT.md` §5（进度）+ 修改日志 |
 
 #### 修改日志格式（§6）
-每次提交必须在 `AI_CONTEXT.md` 的修改日志表格中追加一行：
+在以下时机更新修改日志：
+- 完成一个有意义的功能模块或阶段
+- 多次小修改积累后统一记录一条
+- 重要架构变更或 Bug 修复
 
+格式：
 ```markdown
 | YYYY-MM-DD | 简短描述变更内容 | 你的姓名 |
 ```
