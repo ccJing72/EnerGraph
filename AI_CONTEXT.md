@@ -227,6 +227,7 @@ AgentState (TypedDict):
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-05-08 | 协作规范全面扩充：新增 AI 助手协作说明、文档强制更新规则、代码文件头注释规范、Git 提交规范表格 | 魏博源 |
 | 2026-05-08 | Phase 3 全部完成：Step 5-8（nodes/graph/report_builder/frontend）+ Python 3.11 环境 | 魏博源 |
 | 2026-05-08 | 中场架构审查：扩展为多 Agent 结构，新增 pipelines/memory/services 预留层 | 魏博源 |
 | 2026-05-08 | Phase 3 启动：Step 1-4 完成（config/schemas/tools/prompts） | 魏博源 |
@@ -238,32 +239,168 @@ AgentState (TypedDict):
 
 ## 7. 协作规范
 
+> **写给所有协作者（含 AI 助手）**：本节是你接手工作前必读的行为准则。无论你是人类开发者还是 AI，每次完成一个工作单元后，都必须按照本节规范更新文档和日志，再提交代码。
+
+---
+
 ### 7.1 环境配置（新成员入职）
+
+**第一步：克隆仓库**
 ```bash
 git clone https://github.com/Webr1ng/EnerGraph.git
 cd EnerGraph
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env  # 填入 API Key
-streamlit run src/frontend/app.py
 ```
 
+**第二步：创建 Python 环境（必须用 conda，Python 3.11）**
+```bash
+# Windows，Anaconda 安装在 D:\Anaconda
+D:\Anaconda\Scripts\conda.exe create -n energraph python=3.11 -y
+D:\Anaconda\Scripts\conda.exe activate energraph
+pip install -r requirements.txt
+```
+
+**第三步：配置环境变量**
+```bash
+cp .env.example .env
+# 用编辑器打开 .env，填入你的 API Key（OpenAI 或 Anthropic）
+```
+
+**第四步：启动前端验证环境**
+```bash
+streamlit run src/frontend/app.py
+# 浏览器打开 http://localhost:8501，点击"执行 Agent"，能看到报告即为成功
+```
+
+---
+
 ### 7.2 代码规范
-- **PEP 8** 严格遵循，所有函数必须有 Type Hints + Docstrings
-- **绝对导入**：`from src.config import settings` 而非相对导入
-- **错误处理**：工具函数必须 try-except 并返回结构化错误
-- **提交格式**：`[模块] 简短描述`，如 `[tools] add input validation to calc_benefit`
 
-### 7.3 文档维护规则
-- `AI_CONTEXT.md` 是项目"单点真相"，任何架构变更必须同步更新
-- `API_INTERFACE.md` 反映前后端契约，接口变更必须同步更新
-- `README.md` 保持新成员 3 分钟可运行的准确性
+#### 每个文件开头必须有模块简述注释
+每个 `.py` 文件的第一行（模块 docstring）必须说明：**这个文件是什么、做什么、属于哪个层**。格式：
 
-### 7.4 扩展原则
-- 新增工具：在 `src/tools/` 添加文件 → 在 `TOOL_REGISTRY` 注册 → 工具自动可用
-- 新增节点：在 `src/agent/nodes.py` 添加函数 → 在 `graph.py` 注册节点和边
-- RAG 扩展：利用 `AgentState.context` 字段注入检索结果
+```python
+"""<模块名> — <一句话说明职责>
+
+所属层：<tools / agents / schemas / config / utils / frontend>
+依赖：<列出主要依赖，如 src.schemas.output_schemas>
+"""
+```
+
+示例（`src/tools/calc_benefit.py`）：
+```python
+"""收益计算工具 — 对比基准方案与峰谷套利方案的成本差异
+
+所属层：tools
+依赖：无（纯计算，不依赖其他 src 模块）
+"""
+```
+
+#### 函数注释规范
+- 所有 `public` 函数必须有 **Type Hints** + **Docstring**（Args / Returns / Raises）
+- 函数内部只在"为什么这样做"不明显时写行内注释，不写"做了什么"的废话注释
+- 工具函数必须 `try-except`，异常统一返回 `{"error": "工具名: 错误信息"}`
+
+#### 导入规范
+- 统一使用**绝对导入**：`from src.config import settings`，禁止相对导入
+- 标准库 → 第三方库 → 本项目模块，三组之间空一行
+
+#### 命名规范
+- 文件名、函数名、变量名：`snake_case`
+- 类名：`PascalCase`
+- 常量：`UPPER_SNAKE_CASE`（如 `TOOL_REGISTRY`）
+
+---
+
+### 7.3 Git 提交规范
+
+#### 提交格式
+```
+[模块] 简短动词短语描述变更内容
+```
+
+| 模块标签 | 适用范围 |
+|----------|----------|
+| `[tools]` | `src/tools/` |
+| `[agents]` | `src/agents/` |
+| `[schemas]` | `src/schemas/` |
+| `[config]` | `src/config/`, `config/` |
+| `[frontend]` | `src/frontend/` |
+| `[utils]` | `src/utils/` |
+| `[docs]` | `AI_CONTEXT.md`, `README.md`, `docs/` |
+| `[refactor]` | 跨模块重构 |
+| `[fix]` | Bug 修复 |
+| `[test]` | `src/tests/` |
+
+示例：
+```
+[tools] add input validation to calc_benefit
+[docs] update Phase 4 progress in AI_CONTEXT.md
+[fix] handle empty solar array in compute_metrics
+```
+
+#### 推送流程
+```bash
+git add <具体文件>        # 不要 git add .，避免提交 .env 等敏感文件
+git commit -m "[模块] 描述"
+git pull --rebase origin main   # 先同步远端，避免冲突
+git push origin main
+```
+
+---
+
+### 7.4 文档维护规则（强制）
+
+> **每次完成一个工作单元（无论大小），必须在提交代码前完成以下文档更新。**
+
+#### 必须更新的文档
+
+| 变更类型 | 必须更新的文档 |
+|----------|----------------|
+| 新增 / 修改工具函数 | `AI_CONTEXT.md` §4（接口字典）+ 修改日志 |
+| 新增 / 修改 Agent 节点或图结构 | `AI_CONTEXT.md` §2（架构图）+ 修改日志 |
+| 新增 / 修改数据模型（schemas） | `AI_CONTEXT.md` §4 + `docs/API_INTERFACE.md` + 修改日志 |
+| 新增文件或目录 | `AI_CONTEXT.md` §3（目录结构）+ 修改日志 |
+| 删除文件或目录 | `AI_CONTEXT.md` §3 + 修改日志 |
+| 修改环境依赖（requirements.txt） | `AI_CONTEXT.md` §2.1（技术栈）+ `README.md` + 修改日志 |
+| 完成一个 Phase 阶段 | `AI_CONTEXT.md` §5（进度）+ 修改日志 |
+
+#### 修改日志格式（§6）
+每次提交必须在 `AI_CONTEXT.md` 的修改日志表格中追加一行：
+
+```markdown
+| YYYY-MM-DD | 简短描述变更内容 | 你的姓名 |
+```
+
+- 日期用实际操作日期
+- 描述控制在一行内，说清楚"做了什么"
+- **姓名填写真实姓名**，AI 协作完成的工作也标注操作者姓名（不写 AI 名）
+
+#### AI 助手协作说明
+如果你是 AI 助手接手此项目：
+1. 先读完本文件（`AI_CONTEXT.md`）再动手
+2. 读 `src/` 下相关模块的文件头注释，了解各层职责
+3. 完成工作后，**必须**更新 `AI_CONTEXT.md` 对应章节 + 修改日志
+4. 不确定架构决策时，在修改日志中注明"待确认"，等人类审查
+
+---
+
+### 7.5 扩展原则
+
+#### 新增工具
+1. 在 `src/tools/` 新建 `<tool_name>.py`，文件头写模块简述
+2. 在 `src/tools/__init__.py` 的 `TOOL_REGISTRY` 和 `TOOL_SCHEMAS` 中注册
+3. 工具自动对 Agent 可用，无需修改 Agent 代码
+4. 更新 `AI_CONTEXT.md` §4.2（工具输出模型）
+
+#### 新增 Agent 节点
+1. 在 `src/agents/energy/nodes.py` 添加节点函数
+2. 在 `src/agents/energy/graph.py` 注册节点和边
+3. 更新 `AI_CONTEXT.md` §2.2（架构图）
+
+#### RAG 扩展
+- 利用 `AgentState.context` 字段注入检索结果
+- 入库逻辑写在 `src/pipelines/rag_ingest.py`（已预留）
+- 检索逻辑在 `agent_node` 中调用，结果写入 `state["context"]`
 
 ---
 
