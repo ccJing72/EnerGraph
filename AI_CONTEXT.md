@@ -227,6 +227,7 @@ AgentState (TypedDict):
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-05-08 | 协作规范再次扩充：新增分支策略(7.3)、.env保护说明、测试规范(7.6)、创建src/tests/目录 | 魏博源 |
 | 2026-05-08 | 协作规范全面扩充：新增 AI 助手协作说明、文档强制更新规则、代码文件头注释规范、Git 提交规范表格 | 魏博源 |
 | 2026-05-08 | Phase 3 全部完成：Step 5-8（nodes/graph/report_builder/frontend）+ Python 3.11 环境 | 魏博源 |
 | 2026-05-08 | 中场架构审查：扩展为多 Agent 结构，新增 pipelines/memory/services 预留层 | 魏博源 |
@@ -311,7 +312,25 @@ streamlit run src/frontend/app.py
 
 ---
 
-### 7.3 Git 提交规范
+### 7.3 分支策略
+
+- **main**：保护分支，始终保持可运行状态，不直接在此分支开发
+- **feature/\<name\>**：功能开发分支，命名示例：`feature/rag-ingest`、`feature/sft-export`
+- **fix/\<name\>**：Bug 修复分支，命名示例：`fix/calc-benefit-negative`
+
+**工作流程：**
+```bash
+git checkout -b feature/<name>   # 从 main 新建分支
+# ... 开发、提交 ...
+git push origin feature/<name>   # 推送分支
+# 在 GitHub 上发起 Pull Request → 合并到 main
+```
+
+> 紧急修复可直接推 main，但必须在修改日志中注明"hotfix"。
+
+---
+
+### 7.4 Git 提交规范
 
 #### 提交格式
 ```
@@ -346,9 +365,15 @@ git pull --rebase origin main   # 先同步远端，避免冲突
 git push origin main
 ```
 
+#### .env 保护（重要）
+- `.env` 文件包含 API Key，**绝对不能提交到 Git**
+- `.gitignore` 已包含 `.env`，但仍需注意：**不要使用 `git add .`**
+- 如果误提交了 `.env`，立即联系团队负责人，需要轮换所有 API Key
+- 新成员通过 `.env.example` 了解需要哪些变量，自行填写本地 `.env`
+
 ---
 
-### 7.4 文档维护规则（强制）
+### 7.5 文档维护规则（强制）
 
 > **每次完成一个工作单元（无论大小），必须在提交代码前完成以下文档更新。**
 
@@ -384,7 +409,34 @@ git push origin main
 
 ---
 
-### 7.5 扩展原则
+### 7.6 测试规范
+
+- 测试文件放在 `src/tests/`，命名 `test_<模块名>.py`
+- 运行测试：`pytest src/tests/`
+- **新增工具函数时必须写测试**，覆盖：正常输入、边界值（如全零数组）、非法输入（如长度不为 24）
+- **修复 Bug 时必须先写复现测试，再修复**，确保测试通过后再提交
+- 测试不依赖真实 API Key，工具层测试全部为纯计算，无需 mock LLM
+
+示例（`src/tests/test_tools.py`）：
+```python
+from src.tools.compute_metrics import compute_metrics
+
+def test_compute_metrics_normal():
+    load = [1.0] * 24
+    solar = [0.5] * 24
+    price = [0.6] * 24
+    result = compute_metrics(load, solar, price)
+    assert "error" not in result
+    assert result["total_load_kwh"] == 24.0
+
+def test_compute_metrics_wrong_length():
+    result = compute_metrics([1.0] * 10, [0.5] * 24, [0.6] * 24)
+    assert "error" in result
+```
+
+---
+
+### 7.7 扩展原则
 
 #### 新增工具
 1. 在 `src/tools/` 新建 `<tool_name>.py`，文件头写模块简述
