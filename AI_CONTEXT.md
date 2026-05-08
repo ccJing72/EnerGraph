@@ -70,6 +70,7 @@
 
 ```
 EnerGraph/
+├── CLAUDE.md                      # 协作准则（Claude 自动加载）
 ├── AI_CONTEXT.md                  # 本文件 — 项目单点真相
 ├── README.md                      # 快速启动指南
 ├── .gitignore
@@ -227,6 +228,7 @@ AgentState (TypedDict):
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-05-08 | 创建 CLAUDE.md：提取固定策略与行为准则，AI_CONTEXT.md §7 精简为环境配置+速查表 | 魏博源 |
 | 2026-05-08 | 协作规范再次扩充：新增分支策略(7.3)、.env保护说明、测试规范(7.6)、创建src/tests/目录 | 魏博源 |
 | 2026-05-08 | 协作规范全面扩充：新增 AI 助手协作说明、文档强制更新规则、代码文件头注释规范、Git 提交规范表格 | 魏博源 |
 | 2026-05-08 | Phase 3 全部完成：Step 5-8（nodes/graph/report_builder/frontend）+ Python 3.11 环境 | 魏博源 |
@@ -240,7 +242,9 @@ AgentState (TypedDict):
 
 ## 7. 协作规范
 
-> **写给所有协作者（含 AI 助手）**：本节是你接手工作前必读的行为准则。无论你是人类开发者还是 AI，每次完成一个工作单元后，都必须按照本节规范更新文档和日志，再提交代码。
+> **代码规范、Git 规范、测试规范、文档维护规则、AI 助手行为准则等固定策略已迁移至 [`CLAUDE.md`](./CLAUDE.md)。**
+> Claude 每次会话自动加载该文件，协作者也应先读该文件理解项目准则。
+> 当两文件冲突时，以 `CLAUDE.md` 为准。
 
 ---
 
@@ -276,189 +280,19 @@ streamlit run src/frontend/app.py
 
 ---
 
-### 7.2 代码规范
+### 7.2 快速规范索引
 
-#### 每个文件开头必须有模块简述注释
-每个 `.py` 文件的第一行（模块 docstring）必须说明：**这个文件是什么、做什么、属于哪个层**。格式：
+以下规范详见 [`CLAUDE.md`](./CLAUDE.md)，此处仅列要点速查：
 
-```python
-"""<模块名> — <一句话说明职责>
-
-所属层：<tools / agents / schemas / config / utils / frontend>
-依赖：<列出主要依赖，如 src.schemas.output_schemas>
-"""
-```
-
-示例（`src/tools/calc_benefit.py`）：
-```python
-"""收益计算工具 — 对比基准方案与峰谷套利方案的成本差异
-
-所属层：tools
-依赖：无（纯计算，不依赖其他 src 模块）
-"""
-```
-
-#### 函数注释规范
-- 所有 `public` 函数必须有 **Type Hints** + **Docstring**（Args / Returns / Raises）
-- 函数内部只在"为什么这样做"不明显时写行内注释，不写"做了什么"的废话注释
-- 工具函数必须 `try-except`，异常统一返回 `{"error": "工具名: 错误信息"}`
-
-#### 导入规范
-- 统一使用**绝对导入**：`from src.config import settings`，禁止相对导入
-- 标准库 → 第三方库 → 本项目模块，三组之间空一行
-
-#### 命名规范
-- 文件名、函数名、变量名：`snake_case`
-- 类名：`PascalCase`
-- 常量：`UPPER_SNAKE_CASE`（如 `TOOL_REGISTRY`）
-
----
-
-### 7.3 分支策略
-
-- **main**：保护分支，始终保持可运行状态，不直接在此分支开发
-- **feature/\<name\>**：功能开发分支，命名示例：`feature/rag-ingest`、`feature/sft-export`
-- **fix/\<name\>**：Bug 修复分支，命名示例：`fix/calc-benefit-negative`
-
-**工作流程：**
-```bash
-git checkout -b feature/<name>   # 从 main 新建分支
-# ... 开发、提交 ...
-git push origin feature/<name>   # 推送分支
-# 在 GitHub 上发起 Pull Request → 合并到 main
-```
-
-> 紧急修复可直接推 main，但必须在修改日志中注明"hotfix"。
-
----
-
-### 7.4 Git 提交规范
-
-#### 提交格式
-```
-[模块] 简短动词短语描述变更内容
-```
-
-| 模块标签 | 适用范围 |
-|----------|----------|
-| `[tools]` | `src/tools/` |
-| `[agents]` | `src/agents/` |
-| `[schemas]` | `src/schemas/` |
-| `[config]` | `src/config/`, `config/` |
-| `[frontend]` | `src/frontend/` |
-| `[utils]` | `src/utils/` |
-| `[docs]` | `AI_CONTEXT.md`, `README.md`, `docs/` |
-| `[refactor]` | 跨模块重构 |
-| `[fix]` | Bug 修复 |
-| `[test]` | `src/tests/` |
-
-示例：
-```
-[tools] add input validation to calc_benefit
-[docs] update Phase 4 progress in AI_CONTEXT.md
-[fix] handle empty solar array in compute_metrics
-```
-
-#### 推送流程
-```bash
-git add <具体文件>        # 不要 git add .，避免提交 .env 等敏感文件
-git commit -m "[模块] 描述"
-git pull --rebase origin main   # 先同步远端，避免冲突
-git push origin main
-```
-
-#### .env 保护（重要）
-- `.env` 文件包含 API Key，**绝对不能提交到 Git**
-- `.gitignore` 已包含 `.env`，但仍需注意：**不要使用 `git add .`**
-- 如果误提交了 `.env`，立即联系团队负责人，需要轮换所有 API Key
-- 新成员通过 `.env.example` 了解需要哪些变量，自行填写本地 `.env`
-
----
-
-### 7.5 文档维护规则（强制）
-
-> **每次完成一个工作单元（无论大小），必须在提交代码前完成以下文档更新。**
-
-#### 必须更新的文档
-
-| 变更类型 | 必须更新的文档 |
-|----------|----------------|
-| 新增 / 修改工具函数 | `AI_CONTEXT.md` §4（接口字典）+ 修改日志 |
-| 新增 / 修改 Agent 节点或图结构 | `AI_CONTEXT.md` §2（架构图）+ 修改日志 |
-| 新增 / 修改数据模型（schemas） | `AI_CONTEXT.md` §4 + `docs/API_INTERFACE.md` + 修改日志 |
-| 新增文件或目录 | `AI_CONTEXT.md` §3（目录结构）+ 修改日志 |
-| 删除文件或目录 | `AI_CONTEXT.md` §3 + 修改日志 |
-| 修改环境依赖（requirements.txt） | `AI_CONTEXT.md` §2.1（技术栈）+ `README.md` + 修改日志 |
-| 完成一个 Phase 阶段 | `AI_CONTEXT.md` §5（进度）+ 修改日志 |
-
-#### 修改日志格式（§6）
-在以下时机更新修改日志：
-- 完成一个有意义的功能模块或阶段
-- 多次小修改积累后统一记录一条
-- 重要架构变更或 Bug 修复
-
-格式：
-```markdown
-| YYYY-MM-DD | 简短描述变更内容 | 你的姓名 |
-```
-
-- 日期用实际操作日期
-- 描述控制在一行内，说清楚"做了什么"
-- **姓名填写真实姓名**，AI 协作完成的工作也标注操作者姓名（不写 AI 名）
-
-#### AI 助手协作说明
-如果你是 AI 助手接手此项目：
-1. 先读完本文件（`AI_CONTEXT.md`）再动手
-2. 读 `src/` 下相关模块的文件头注释，了解各层职责
-3. 完成工作后，**必须**更新 `AI_CONTEXT.md` 对应章节 + 修改日志
-4. 不确定架构决策时，在修改日志中注明"待确认"，等人类审查
-
----
-
-### 7.6 测试规范
-
-- 测试文件放在 `src/tests/`，命名 `test_<模块名>.py`
-- 运行测试：`pytest src/tests/`
-- **新增工具函数时必须写测试**，覆盖：正常输入、边界值（如全零数组）、非法输入（如长度不为 24）
-- **修复 Bug 时必须先写复现测试，再修复**，确保测试通过后再提交
-- 测试不依赖真实 API Key，工具层测试全部为纯计算，无需 mock LLM
-
-示例（`src/tests/test_tools.py`）：
-```python
-from src.tools.compute_metrics import compute_metrics
-
-def test_compute_metrics_normal():
-    load = [1.0] * 24
-    solar = [0.5] * 24
-    price = [0.6] * 24
-    result = compute_metrics(load, solar, price)
-    assert "error" not in result
-    assert result["total_load_kwh"] == 24.0
-
-def test_compute_metrics_wrong_length():
-    result = compute_metrics([1.0] * 10, [0.5] * 24, [0.6] * 24)
-    assert "error" in result
-```
-
----
-
-### 7.7 扩展原则
-
-#### 新增工具
-1. 在 `src/tools/` 新建 `<tool_name>.py`，文件头写模块简述
-2. 在 `src/tools/__init__.py` 的 `TOOL_REGISTRY` 和 `TOOL_SCHEMAS` 中注册
-3. 工具自动对 Agent 可用，无需修改 Agent 代码
-4. 更新 `AI_CONTEXT.md` §4.2（工具输出模型）
-
-#### 新增 Agent 节点
-1. 在 `src/agents/energy/nodes.py` 添加节点函数
-2. 在 `src/agents/energy/graph.py` 注册节点和边
-3. 更新 `AI_CONTEXT.md` §2.2（架构图）
-
-#### RAG 扩展
-- 利用 `AgentState.context` 字段注入检索结果
-- 入库逻辑写在 `src/pipelines/rag_ingest.py`（已预留）
-- 检索逻辑在 `agent_node` 中调用，结果写入 `state["context"]`
+| 类别 | 速查要点 |
+|------|----------|
+| **代码规范** | 文件头 docstring / Type Hints / 绝对导入 / snake_case / try-except 返回 `{"error": ...}` |
+| **分支策略** | main 保护 / `feature/<name>` 开发 / `fix/<name>` 修 Bug / PR 合并 |
+| **提交格式** | `[模块] 动词短语`（模块标签表见 CLAUDE.md） |
+| **测试规范** | `src/tests/test_<模块>.py` / 新工具必测 / 修 Bug 先写测试 |
+| **文档更新** | 变更后必须更新 `AI_CONTEXT.md` 对应章节 + 修改日志 |
+| **.env 保护** | 绝对禁止提交，不用 `git add .` |
+| **扩展方式** | 新工具→注册 TOOL_REGISTRY / 新节点→注册 graph / RAG→用 AgentState.context |
 
 ---
 
