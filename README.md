@@ -16,39 +16,47 @@
 
 ```
 EnerGraph/
-├── AI_CONTEXT.md              # 动态项目状态文档
-├── README.md                  # 本文件
-├── .gitignore                 # Git 忽略规则
-├── .env.example               # 环境变量模板
-├── requirements.txt           # Python 依赖
+├── CLAUDE.md                      # 协作准则（Claude 自动加载）
+├── AI_CONTEXT.md                  # 项目知识库（单点真相）
 ├── config/
-│   └── agent_config.yaml      # Agent 配置
+│   └── agent_config.yaml          # Agent 配置
 ├── src/
-│   ├── agent/                 # Agent 核心逻辑
-│   │   ├── graph.py           # LangGraph 状态图
-│   │   ├── nodes.py           # ReAct 节点
-│   │   └── state.py           # 状态模型
-│   ├── tools/                 # Mock 工具函数
-│   │   ├── compute_metrics.py # 统计指标
-│   │   ├── compete_price.py   # 电价对比
-│   │   └── calc_benefit.py    # 收益计算
-│   ├── models/
-│   │   └── data_models.py     # 数据模型
+│   ├── config/
+│   │   └── settings.py            # 统一配置加载
+│   ├── schemas/                   # Pydantic 数据模型
+│   │   ├── input_schemas.py
+│   │   ├── output_schemas.py
+│   │   └── agent_state.py
+│   ├── tools/                     # 工具函数 + TOOL_REGISTRY
+│   │   ├── compute_metrics.py     # 统计指标
+│   │   ├── compare_price.py       # 电价对比
+│   │   └── calc_benefit.py        # 收益计算
+│   ├── agents/                    # 多 Agent 目录
+│   │   ├── base.py                # Agent 基类
+│   │   └── energy/                # 调度解释 Agent
+│   │       ├── graph.py           # LangGraph 状态图
+│   │       ├── nodes.py           # ReAct 节点
+│   │       └── prompts.py         # Prompt 模板
+│   ├── pipelines/                 # 数据处理流水线（预留）
+│   ├── memory/                    # 记忆管理（预留）
+│   ├── services/                  # FastAPI 服务层（预留）
+│   ├── utils/
+│   │   └── report_builder.py      # 报告生成
 │   └── frontend/
-│       └── app.py             # Streamlit 界面
+│       └── app.py                 # Streamlit 界面
 ├── docs/
-│   └── API_INTERFACE.md       # 接口规范
-└── tests/                     # 测试（预留）
+│   └── API_INTERFACE.md           # 接口规范
+└── src/tests/                     # 测试
 ```
 
 ## 技术栈
 
-- **核心框架**: LangGraph 0.2.16
-- **大模型**: OpenAI GPT-4 / Claude (可配置)
-- **数据验证**: Pydantic 2.9.0
-- **前端**: Streamlit 1.39.0
+- **核心框架**: LangGraph 0.2.x
+- **大模型**: LangChain + OpenAI/Claude（可配置）
+- **数据验证**: Pydantic 2.x
+- **前端**: Streamlit 1.39
 - **配置管理**: PyYAML + python-dotenv
-- **Python 版本**: 3.9+
+- **Python 版本**: ≥3.11
 
 ## 快速开始
 
@@ -56,21 +64,18 @@ EnerGraph/
 
 ```bash
 # 克隆项目
-git clone <repository-url>
+git clone https://github.com/Webr1ng/EnerGraph.git
 cd EnerGraph
 
-# 创建虚拟环境
-python -m venv venv
-
-# 激活虚拟环境
-# Windows:
-venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
+# 创建 conda 环境（Python 3.11）
+conda create -n energraph python=3.11 -y
+conda activate energraph
 
 # 安装依赖
 pip install -r requirements.txt
 ```
+
+> Windows 用户若 `conda` 不在 PATH，需先运行 Anaconda Prompt。详见 `AI_CONTEXT.md` §7.1。
 
 ### 2. 配置环境变量
 
@@ -111,17 +116,18 @@ streamlit run src/frontend/app.py
 | 工具 | 功能 | 输入 | 输出 |
 |-----|------|-----|------|
 | `compute_metrics` | 统计负载、光伏、电价指标 | load, solar, grid_price | 统计结果字典 |
-| `compete_price` | 识别峰谷套利机会 | grid_price | 价格对比结果 |
+| `compare_price` | 识别峰谷套利机会 | grid_price | 价格对比结果 |
 | `calc_benefit` | 计算调度收益 | load, solar, grid_price, soc, max_power | 收益计算结果 |
 
 ## 开发指南
 
 ### 多人协作
 
-1. **新成员入职**：先阅读 `AI_CONTEXT.md` 了解项目状态
-2. **代码提交**：提交信息格式 `[模块] 简短描述`
+1. **新成员入职**：先阅读 `AI_CONTEXT.md` 了解项目全貌，再读 `CLAUDE.md` 了解协作准则
+2. **代码规范**：严格遵循 `CLAUDE.md` 中的编码/Git/测试/文档规范
 3. **环境配置**：每人维护自己的 `.env` 文件（不提交到 Git）
 4. **接口规范**：参考 `docs/API_INTERFACE.md`
+5. **文档同步**：完成后必须更新 `AI_CONTEXT.md` 对应章节 + 修改日志
 
 ### 注意事项
 
@@ -131,16 +137,8 @@ streamlit run src/frontend/app.py
 
 ## 后续规划
 
-- [ ] 集成真实的大模型 API 调用
-- [ ] 替换 Mock 工具为实际调度算法
-- [ ] 添加单元测试
+- [ ] 端到端测试（配置真实 API Key）
+- [ ] 替换 Mock 工具为实际调度算法（业务方负责）
+- [ ] 集成 RAG 知识库
 - [ ] 支持多语言输出（中英文）
-- [ ] 优化前端交互体验
-
-## 许可证
-
-内部项目，未公开
-
-## 联系方式
-
-如有问题请联系项目负责人
+- [ ] CI/CD 配置

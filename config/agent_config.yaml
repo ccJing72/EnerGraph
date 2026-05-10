@@ -16,7 +16,7 @@ agent:
 tools:
   - name: "compute_metrics"
     description: "分时段统计购电、售电、储能充放电、光伏消纳等核心指标"
-  - name: "compete_price"
+  - name: "compare_price"
     description: "对比不同时段的购/售电价，识别峰谷套利机会"
   - name: "calc_benefit"
     description: "基于调度数据计算预计成本/收益，对比基准方案"

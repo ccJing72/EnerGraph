@@ -81,7 +81,7 @@ grid_price: List[float]    # 24小时电价数据
 }
 ```
 
-### 2. compete_price
+### 2. compare_price
 
 **功能**: 对比不同时段的购/售电价，识别峰谷套利机会
 
@@ -93,12 +93,12 @@ grid_price: List[float]    # 24小时电价数据
 **返回结果**:
 ```python
 {
-  "min_price": float,                # 最低电价 (元/kWh)
-  "max_price": float,                # 最高电价 (元/kWh)
-  "min_price_hour": int,             # 最低电价时段 (0-23)
-  "max_price_hour": int,             # 最高电价时段 (0-23)
-  "price_diff": float,               # 价差 (元/kWh)
-  "arbitrage_potential_pct": float   # 套利潜力 (%)
+  "min_price": float,                  # 最低电价 (元/kWh)
+  "max_price": float,                  # 最高电价 (元/kWh)
+  "min_price_hours": List[int],        # 最低电价时段列表 (0-23)
+  "max_price_hours": List[int],        # 最高电价时段列表 (0-23)
+  "price_diff": float,                 # 价差 (元/kWh)
+  "arbitrage_potential_pct": float     # 套利潜力 (%)
 }
 ```
 
@@ -146,9 +146,19 @@ max_power: float           # 最大充放电功率
   "price_analysis": Dict[str, Any],
   "benefit": Dict[str, Any],
   
+  # 控制流
+  "messages": List[Dict[str, Any]],
+  "next_action": str,           # "call_tool" | "generate_report" | "end"
+  "tool_to_call": str | None,
+  "iteration": int,
+
+  # 扩展（RAG 预留）
+  "context": str | None,
+  "history": List[Dict] | None,
+
   # Agent 输出
   "report": str,
-  "iteration": int
+  "error": str | None
 }
 ```
 
@@ -168,17 +178,17 @@ max_power: float           # 最大充放电功率
 ### 添加新工具
 
 1. 在 `src/tools/` 下创建新的工具函数文件
-2. 在 `src/agent/nodes.py` 中调用新工具
+2. 在 `src/tools/__init__.py` 的 `TOOL_REGISTRY` 和 `TOOL_SCHEMAS` 中注册
 3. 更新 `config/agent_config.yaml` 工具列表
 4. 在本文档中添加接口说明
 
 ### 修改数据模型
 
-1. 更新 `src/models/data_models.py`
-2. 同步修改 `src/agent/state.py`
+1. 更新 `src/schemas/` 下的对应文件
+2. 同步修改 `src/agents/energy/nodes.py` 中的引用
 3. 更新本文档的数据结构说明
 4. 通知团队成员
 
 ---
 
-**最后更新**: 2026-05-05
+**最后更新**: 2026-05-08

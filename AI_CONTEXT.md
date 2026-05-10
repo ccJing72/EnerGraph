@@ -214,9 +214,9 @@ AgentState (TypedDict):
 - [x] Step 8: `src/frontend/app.py` — Streamlit 界面
 
 ### Phase 4 待办（下一阶段）
-- [ ] 清理旧文件（`src/agent/`、`src/models/`）
-- [ ] 更新 `README.md`（新成员 3 分钟可运行）
-- [ ] 更新 `docs/API_INTERFACE.md`
+- [x] 清理旧文件（`src/agent/`、`src/models/`、`compete_price.py`）
+- [x] 更新 `README.md`（新成员 3 分钟可运行）
+- [x] 更新 `docs/API_INTERFACE.md`
 - [ ] 配置 `.env` 填入 API Key，端到端测试
 - [ ] 替换 Mock 工具为真实调度算法（业务方负责）
 - [ ] 集成 RAG 知识库（`src/pipelines/rag_ingest.py`）
@@ -228,6 +228,7 @@ AgentState (TypedDict):
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-05-08 | Phase 4 清理启动：删除旧目录(src/agent,src/models,compete_price.py)，readme/api_interface全面更新 | 魏博源 |
 | 2026-05-08 | 创建 CLAUDE.md：提取固定策略与行为准则，AI_CONTEXT.md §7 精简为环境配置+速查表 | 魏博源 |
 | 2026-05-08 | 协作规范再次扩充：新增分支策略(7.3)、.env保护说明、测试规范(7.6)、创建src/tests/目录 | 魏博源 |
 | 2026-05-08 | 协作规范全面扩充：新增 AI 助手协作说明、文档强制更新规则、代码文件头注释规范、Git 提交规范表格 | 魏博源 |
