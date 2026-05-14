@@ -1,69 +1,55 @@
-"""Streamlit 前端界面"""
+"""app — V3 多模态调度 Agent Streamlit 前端
+
+所属层：frontend
+依赖：streamlit, src.graph.builder
+对接 V3 引擎：N/A（通过 graph 间接调用）
+"""
 import streamlit as st
 
-from src.schemas import AgentInput, ForecastData, SystemState, BasicInfo
-from src.agents.energy.graph import create_agent_graph
+from src.graph.builder import graph
 
-_EXAMPLE = {
-    "forecast_data": {
-        "load": [0.5, 0.4, 0.3, 0.3, 0.4, 0.6, 1.2, 1.5, 1.8, 1.6, 1.4, 1.3,
-                 1.5, 1.7, 1.6, 1.4, 1.8, 2.2, 2.5, 2.1, 1.8, 1.2, 0.8, 0.6],
-        "solar": [0, 0, 0, 0, 0, 0, 0.3, 1.2, 2.5, 3.8, 4.2, 4.5,
-                  4.3, 3.9, 3.1, 1.8, 0.5, 0, 0, 0, 0, 0, 0, 0],
-        "grid_price": [0.32, 0.32, 0.32, 0.32, 0.32, 0.45, 0.45, 0.45,
-                       0.58, 0.58, 0.58, 0.58, 0.58, 0.58, 0.58, 0.45,
-                       0.45, 0.65, 0.65, 0.65, 0.45, 0.45, 0.32, 0.32],
-    },
-    "system_state": {"soc": 0.3, "soc_max": 0.9, "soc_min": 0.2, "max_power": 3.0, "user_pref": "cost_priority"},
-    "basic_info": {"timezone": "UTC+8", "currency": "CNY", "query": "今天的调度策略是什么？为什么这么调度？"},
-}
-
-st.set_page_config(page_title="家庭能源调度 AI Agent", page_icon="⚡", layout="wide")
-st.title("⚡ 家庭能源调度 AI Agent Demo")
-st.markdown("基于 LangGraph 的能源调度策略解释系统")
+st.set_page_config(page_title="青山 V3 多模态调度 Agent", layout="wide")
+st.title("青山 V3 多模态调度 Agent")
+st.caption("基于 QingShan-TimeDiT + PhysicsAI 的认知交互层 Demo")
 
 with st.sidebar:
-    st.header("输入数据配置")
-    st.json(_EXAMPLE, expanded=False)
-    query = st.text_input("用户查询", value=_EXAMPLE["basic_info"]["query"])
+    st.header("输入配置")
+    user_input = st.text_area(
+        "业务意图输入",
+        value="明天有大批订单急产，产线全开，请评估能耗风险并给出调度建议。",
+        height=120,
+    )
+    target_date = st.text_input("目标日期", value="2026-05-15")
+    datacenter_id = st.text_input("数据中心 ID（AIDC 场景）", value="DC-SH-01")
 
 if st.button("运行 Agent", type="primary"):
-    with st.spinner("Agent 正在分析调度策略..."):
+    with st.spinner("V3 Agent 正在分析..."):
         try:
-            agent_input = AgentInput(**_EXAMPLE)
-            graph = create_agent_graph()
-            initial_state = {
-                "load": agent_input.forecast_data.load,
-                "solar": agent_input.forecast_data.solar,
-                "grid_price": agent_input.forecast_data.grid_price,
-                "soc": agent_input.system_state.soc,
-                "max_power": agent_input.system_state.max_power,
-                "user_pref": agent_input.system_state.user_pref,
-                "query": query,
-                "metrics": {},
-                "price_analysis": {},
-                "benefit": {},
-                "iteration": 0,
-                "context": None,
-                "history": None,
-                "report": "",
-            }
-            result = graph.invoke(initial_state)
+            result = graph.invoke({
+                "user_input": (
+                    f"{user_input}\n"
+                    f"[target_date={target_date}, datacenter_id={datacenter_id}]"
+                ),
+            })
 
-            st.success("分析完成！")
-            st.markdown(result.get("report", "（无报告）"))
+            st.success("分析完成")
+            st.markdown(result.get("final_report", "（无报告）"))
 
-            with st.expander("工具调用详情"):
+            with st.expander("V3 引擎原始数据"):
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    st.subheader("统计指标")
-                    st.json(result.get("metrics", {}))
+                    st.subheader("TimeDiT 预测")
+                    st.json(result.get("timedit_data") or {})
                 with col2:
-                    st.subheader("电价分析")
-                    st.json(result.get("price_analysis", {}))
+                    st.subheader("PhysicsAI 验证")
+                    st.json(result.get("physics_verification") or {})
                 with col3:
-                    st.subheader("收益计算")
-                    st.json(result.get("benefit", {}))
+                    st.subheader("AIDC 液冷状态")
+                    st.json(result.get("aidc_cooling") or {})
+
+            if result.get("constraints"):
+                with st.expander("意图解析结果（ConstraintMatrix）"):
+                    st.json(result["constraints"])
 
             if result.get("error"):
                 st.warning(f"Agent 警告: {result['error']}")
@@ -72,4 +58,4 @@ if st.button("运行 Agent", type="primary"):
             st.error(f"运行出错: {e}")
 
 st.markdown("---")
-st.caption("MVP Demo — 工具函数为简化的 Mock 实现")
+st.caption("Phase 1 Mock Demo — V3 引擎为模拟数据")

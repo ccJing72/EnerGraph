@@ -1,31 +1,51 @@
-# EnerGraph — 家庭能源 AI 调度解释 Agent
+# 青山 V3 多模态调度 Agent — 项目上下文
 
 ## 项目状态
-**当前阶段**: Phase 3 — 重构完成，待 Phase 4 收尾  
-**最后更新**: 2026-05-08  
-**项目性质**: 企业级落地方案（支持上云 / 本地部署）  
+**当前阶段**: Phase 1 — V3 架构适配与企业级解耦重构  
+**最后更新**: 2026-05-14  
+**项目性质**: 企业级落地方案，不公开  
 **GitHub**: https://github.com/Webr1ng/EnerGraph.git  
-**Python 环境**: conda `energraph` / Python 3.11（LangGraph 官方要求 ≥3.10）  
-**Anaconda 路径**: `D:\Anaconda`（已确认安装）
+**Python 环境**: conda `energraph` / Python 3.11（LangGraph 官方要求 ≥3.10）
 
 ---
 
 ## 1. 项目概览
 
-### 1.1 业务目标
-构建一个基于 LangGraph 的家庭能源 AI 调度解释 Agent。核心功能：
-- 接收家庭负载、光伏、电价等模拟数据
-- 通过 **ReAct（Thought → Action → Observation）循环** 驱动大模型进行策略归因分析
-- 调用工具函数获取量化指标
-- 输出包含"调度安排""收益对比""总结建议"的结构化报告
+### 1.1 定位：V3 第 0 层认知交互 Agent
 
-### 1.2 核心业务流
+本项目是青山大模型 V3（QingShan-TimeDiT + PhysicsAI）五层架构的**第 0 层（认知交互层）**。Agent 不参与热力学运算或时序特征生成，而是作为：
+
+| 角色 | 职责 |
+|------|------|
+| **业务意图翻译官**（输入端） | 将 ERP/MES 及人类自然语言输入转化为物理约束矩阵 |
+| **基座引擎调度员**（执行端） | 通过内部 API 触发 PhysicsAI / TimeDiT 进行沙盘推演 |
+| **物理决策解说员**（输出端） | 将生涩的物理残差、SOC 曲线转化为多语言 Markdown 报告 |
+
+### 1.2 核心数据流
+
 ```
-用户输入 → LLM Thought（分析需求）→ Action（调用工具）→ Observation（解读结果）
-                ↑                                                       ↓
-                └──────────── 循环直至信息充足 ←────────────────────────┘
-                                                    ↓
-                                            Final Answer（报告输出）
+多模态输入（自然语言 / ERP JSON / 语音）
+        │
+        ▼
+┌──────────────────────────┐
+│ 1. Intent Parsing        │  LLM 解析业务意图 → 约束矩阵 (ConstraintMatrix)
+│    (Cognitive_Parser)    │
+└──────────┬───────────────┘
+           │
+           ▼
+┌──────────────────────────┐
+│ 2. Engine Invocation     │  并行调用 Mock Tools:
+│    (V3_Engine_Router)    │  - Tool_TimeDiT (时序预测)
+│                          │  - Tool_PhysicsAI (物理验证)
+│                          │  - Tool_AIDC_Cooling (液冷状态)
+└──────────┬───────────────┘
+           │
+           ▼
+┌──────────────────────────┐
+│ 3. Report Generation     │  LLM 结合物理残差与策略参数，生成
+│    (Interpreter_Generator)│  包含"能耗收益/碳排下降/设备安全"的
+│                          │  Markdown 多维解释报告
+└──────────────────────────┘
 ```
 
 ---
@@ -33,163 +53,155 @@
 ## 2. 技术架构
 
 ### 2.1 技术栈
+
 | 类别 | 技术 | 用途 |
 |------|------|------|
 | 核心框架 | LangGraph 0.2.x | ReAct 状态图编排 |
-| 大模型 | LangChain + OpenAI/Claude | 思考与决策 |
-| 数据验证 | Pydantic 2.x | 输入输出模型 |
-| 前端 | Streamlit 1.39 | 可视化交互 |
-| 配置 | python-dotenv + PyYAML | 环境隔离 |
-| Python | 3.10+ | 运行环境 |
+| 大模型 | LangChain + OpenAI/Claude | 意图解析与报告生成 |
+| 数据验证 | Pydantic 2.x | Tool Inputs/Outputs 类型约束（AgentState 用 TypedDict） |
+| 可观测性 | LangSmith | Agent 执行链路追踪与调试（需配置 `LANGCHAIN_TRACING_V2=true`） |
+| 前端 | Streamlit 1.39 | 多模态交互可视化 |
+| 配置 | python-dotenv + PyYAML | Prompt 外部化、环境隔离 |
+| Python | 3.11 | 运行环境 |
 
-### 2.2 ReAct 循环架构
+### 2.2 LangGraph 状态图架构
+
 ```
-       ┌─────────────┐
-       │ agent_node  │ ← LLM Thought：分析数据，决定动作
-       │  (Decision) │
-       └──────┬──────┘
-              │
-        ┌─────┴─────┐
-        │ condition  │ ← 路由判断
-        └─────┬─────┘
-       ┌──────┴──────┐
-       ↓              ↓
-┌──────────┐   ┌────────────┐
-│tool_node │   │report_node │ → Final Answer → END
-│(Action)  │   │(Final)     │
-└────┬─────┘   └────────────┘
-     │
-     └──→ 回到 agent_node (Observation)
+       ┌──────────────────┐
+       │ Cognitive_Parser │ ← LLM Thought：分析输入，生成约束矩阵
+       │   (意图解析)      │
+       └────────┬─────────┘
+                │
+       ┌────────┴─────────┐
+       │ V3_Engine_Router │ ← 并行调用 TimeDiT, PhysicsAI, AIDC_Cooling
+       │  (引擎调度路由)   │
+       └────────┬─────────┘
+                │
+       ┌────────┴──────────────┐        ┌─────────────────────┐
+       │ Interpreter_Generator │ ──────→ │ Human_Approval      │ (预留)
+       │    (报告生成)          │        │ interrupt() 审批节点 │
+       └───────────────────────┘        └─────────────────────┘
 ```
 
 ---
 
-## 3. 项目目录结构
-
-> **2026-05-08 中场架构审查后更新**：扩展为多 Agent 可扩展结构，支持未来 RAG / SFT 数据管道。
+## 3. 项目目录结构（目标）
 
 ```
 EnerGraph/
 ├── CLAUDE.md                      # 协作准则（Claude 自动加载）
 ├── AI_CONTEXT.md                  # 本文件 — 项目单点真相
-├── README.md                      # 快速启动指南
+├── README.md
 ├── .gitignore
 ├── .env.example
-├── requirements.txt               # Python ≥3.11
+├── requirements.txt
 │
 ├── config/
 │   └── agent_config.yaml
 │
 └── src/
-    ├── config/                    # ✅ 配置加载（已完成）
-    │   └── settings.py
-    ├── schemas/                   # ✅ 数据模型（已完成）
-    │   ├── input_schemas.py
-    │   ├── output_schemas.py
-    │   └── agent_state.py
-    ├── tools/                     # ✅ 工具注册表（已完成）
-    │   ├── __init__.py            # TOOL_REGISTRY
-    │   ├── compute_metrics.py
-    │   ├── compare_price.py
-    │   └── calc_benefit.py
-    ├── agents/                    # 🔄 多 Agent 目录（原 agent/ 重命名）
-    │   ├── base.py                # Agent 基类（统一接口）
-    │   └── energy/                # 调度解释 Agent
-    │       ├── graph.py
-    │       ├── nodes.py
-    │       └── prompts.py         # ✅ 已完成
+    ├── config/                    # ✅ 配置加载 + Prompt 外部化
+    │   ├── settings.py
+    │   └── prompts.yaml           # V3 System Prompt 模板（外部化）
+    ├── schemas/                   # ✅ V3 Pydantic 数据模型
+    │   └── v3_engine.py           # ConstraintMatrix, TimeDiTForecast, PhysicsResidual, AIDCCoolingStatus
+    ├── tools/                     # ✅ V3 引擎 Mock 工具
+    │   ├── __init__.py            # TOOL_REGISTRY + TOOL_SCHEMAS
+    │   ├── parse_intent.py        # 意图解析 → ConstraintMatrix
+    │   ├── query_timedit.py       # TimeDiT 时序预测
+    │   ├── verify_physics.py      # PhysicsAI 物理一致性验证
+    │   └── fetch_aidc_cooling.py  # AIDC 液冷状态
+    ├── graph/                     # ✅ LangGraph 状态机
+    │   ├── state.py               # AgentState (TypedDict + Annotated reducer)
+    │   ├── nodes.py               # cognitive_parser / v3_engine_router / interpreter_generator
+    │   ├── edges.py               # should_continue 条件路由
+    │   └── builder.py             # 图组装与编译，graph 全局单例
     ├── pipelines/                 # 【预留】数据处理流水线
-    │   ├── rag_ingest.py          # RAG 文档入库
-    │   └── sft_export.py          # SFT 数据清洗导出
+    │   ├── rag_ingest.py
+    │   └── sft_export.py
     ├── memory/                    # 【预留】记忆管理
-    │   └── checkpointer.py
+    │   └── checkpointer.py        # Checkpointer 配置，实例在 graph/builder.py 中注入
     ├── services/                  # 【预留】FastAPI 服务层
     │   └── api.py
     ├── utils/
     │   └── report_builder.py
     ├── frontend/
-    │   └── app.py
+    │   └── app.py                 # Streamlit 多模态交互（待适配新架构）
     └── tests/
         ├── test_tools.py
-        └── test_agents.py
+        └── test_graph.py
 ```
 
 ---
 
-## 4. 核心接口与数据字典
+## 4. 核心数据模型与接口
 
-### 4.1 输入模型 (input_schemas.py)
-
-```python
-ForecastData:
-  load: List[float]         # 24h 负载 (kWh), len=24
-  solar: List[float]        # 24h 光伏 (kWh), len=24
-  grid_price: List[float]   # 24h 电价 (元/kWh), len=24
-
-SystemState:
-  soc: float (0-1)          # 当前 SOC
-  soc_max: float (0-1)      # 最大 SOC, 默认 0.9
-  soc_min: float (0-1)      # 最小 SOC, 默认 0.2
-  max_power: float (>0)     # 最大充放电功率 (kW)
-  user_pref: str            # "cost_priority" | "eco_priority" | "backup_priority"
-
-BasicInfo:
-  timezone: str             # 默认 "UTC+8"
-  currency: str             # 默认 "CNY"
-  query: str                # 用户查询
-```
-
-### 4.2 工具输出模型 (output_schemas.py)
+### 4.1 V3 引擎输入模型（v3_engine.py 待创建）
 
 ```python
-MetricsResult:
-  total_load_kwh: float
-  total_solar_kwh: float
-  solar_utilization_pct: float
-  valley_load_kwh: float
-  peak_load_kwh: float
-  avg_price: float
+ConstraintMatrix:
+  """业务意图解析结果 — LLM 将自然语言转化为底层 DFL 算法可读的约束"""
+  load_baseline: str          # 负荷基线变化，如 "+20%", "-10%"
+  sla_priority: str           # SLA 优先级: "High" | "Normal" | "Low"
+  time_window: str            # 时间窗口，如 "2026-05-15"
+  optimization_goal: str      # 优化目标: "cost" | "carbon" | "safety"
+  extra_constraints: dict     # 额外约束键值对
 
-PriceCompareResult:
-  min_price: float
-  max_price: float
-  min_price_hour: int
-  max_price_hour: int
-  price_diff: float
-  arbitrage_potential_pct: float
+TimeDiTForecast:
+  """TimeDiT 时序扩散模型预测输出"""
+  target_date: str
+  load_forecast: List[float]        # 24h 负荷预测 (kWh)
+  solar_forecast: List[float]       # 24h 光伏预测 (kWh)
+  confidence_interval: List[float]  # 概率分布置信区间
 
-BenefitResult:
-  baseline_cost: float
-  optimized_cost: float
-  savings: float
-  savings_pct: float
+PhysicsResidual:
+  """PhysicsAI 物理一致性验证结果"""
+  strategy_id: str
+  is_physically_valid: bool         # 是否通过热力学热平衡验证
+  langevin_residual: float          # Langevin 动力学修正残差
+  soc_decay_deviation: float        # SOC 衰减偏差
+  heat_balance_error: float         # 热平衡误差
+  safety_warnings: List[str]        # 安全边界告警
+
+AIDC_CoolingStatus:
+  """智算中心液冷状态"""
+  datacenter_id: str
+  gpu_queue_depth: int              # GPU 任务队列深度
+  liquid_cooling_temp: float        # 液冷温度 (°C)
+  pre_cooling_policy: str           # 预冷策略状态
+  power_draw_kw: float              # 当前算力功耗 (kW)
 ```
 
-### 4.3 Agent 状态 (agent_state.py)
+### 4.2 V3 工具注册表（TOOL_REGISTRY）
+
+| 工具名 | 函数 | 对接 V3 引擎 |
+|--------|------|-------------|
+| `parse_business_intent` | 意图解析 | N/A（纯 LLM 调用） |
+| `query_timedit_forecast` | 时序预测 | QingShan-TimeDiT |
+| `verify_physics_consistency` | 物理验证 | PhysicsAI |
+| `fetch_aidc_cooling_status` | 液冷状态 | AIDC 智算中心 |
+
+### 4.3 Agent 状态（agent_state.py 待重构）
 
 ```python
 AgentState (TypedDict):
   # 输入
-  load, solar, grid_price: List[float]
-  soc, max_power: float
-  user_pref, query: str
+  user_input: str                     # 原始用户输入（自然语言/JSON）
+  messages: List[BaseMessage]         # LangGraph 消息流
 
-  # 工具结果
-  metrics: MetricsResult | None
-  price_analysis: PriceCompareResult | None
-  benefit: BenefitResult | None
+  # 意图解析
+  constraints: ConstraintMatrix | None
 
-  # 控制流
-  next_action: str           # "call_tool" | "generate_report" | "end"
-  tool_to_call: str | None   # 当前要调用的工具名
-  iteration: int
+  # 引擎调用结果
+  timedit_data: TimeDiTForecast | None
+  physics_verification: PhysicsResidual | None
+  aidc_cooling: AIDC_CoolingStatus | None
 
   # 扩展（RAG 预留）
   context: str | None
-  history: List[Dict] | None
 
   # 输出
-  report: str
+  final_report: str                   # Markdown 解析报告
   error: str | None
 ```
 
@@ -197,37 +209,34 @@ AgentState (TypedDict):
 
 ## 5. 开发进度
 
-### 已完成
-- [x] 项目目录初始化 + Git 仓库
-- [x] 基础 Mock 工具实现（初版）
-- [x] Streamlit 前端 Demo（初版）
-- [x] 基础文档（README, API_INTERFACE）
+### Phase 1: 交互流闭环与 API Mock ← 当前阶段
+- [x] 改写 CLAUDE.md + AI_CONTEXT.md（V3 架构适配）
+- [x] 创建 src/schemas/v3_engine.py（ConstraintMatrix / TimeDiTForecast / PhysicsResidual / AIDCCoolingStatus）
+- [x] 创建 src/graph/（state / nodes / edges / builder）
+- [x] 创建 4 个 V3 Mock Tools（parse_intent / query_timedit / verify_physics / fetch_aidc_cooling）
+- [x] Prompt 外部化至 src/config/prompts.yaml
+- [x] 删除旧 src/agents/、旧 schemas、旧 tools
+- [x] 适配 src/frontend/app.py 接入新 graph
+- [x] 更新 README.md
+- [ ] 配置 .env 填入 API Key，端到端测试 Demo
 
-### 重构完成 ✅
-- [x] Step 1: `src/config/settings.py` — 统一配置加载
-- [x] Step 2: `src/schemas/` — Pydantic 模型 + AgentState
-- [x] Step 3: `src/tools/` — 错误处理 + TOOL_REGISTRY
-- [x] Step 4: `src/agents/energy/prompts.py` — Prompt 模板
-- [x] Step 5: `src/agents/energy/nodes.py` — 真正 ReAct 节点
-- [x] Step 6: `src/agents/energy/graph.py` — 条件路由图
-- [x] Step 7: `src/utils/report_builder.py` — 报告生成
-- [x] Step 8: `src/frontend/app.py` — Streamlit 界面
+### Phase 2: 物理/算法插件对接
+- [ ] 将 Mock 工具替换为真实内部 gRPC/HTTP 调用
+- [ ] 引入企业内部知识库（RAG）
 
-### Phase 4 待办（下一阶段）
-- [x] 清理旧文件（`src/agent/`、`src/models/`、`compete_price.py`）
-- [x] 更新 `README.md`（新成员 3 分钟可运行）
-- [x] 更新 `docs/API_INTERFACE.md`
-- [ ] 配置 `.env` 填入 API Key，端到端测试
-- [ ] 替换 Mock 工具为真实调度算法（业务方负责）
-- [ ] 集成 RAG 知识库（`src/pipelines/rag_ingest.py`）
-- [ ] CI/CD 配置
+### Phase 3: eFlex 平台集成与闭环监控
+- [ ] 配合 eFlex 每 15 分钟滚动优化，上线动态 Agent 看板
+- [ ] PhysicsAI 反事实检测 → 预测性维护人话告警推送
 
 ---
 
-## 6. 修改日志 (Changelog)
+## 6. 变更日志（Changelog）
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-05-14 | Phase 1 全部完成：frontend/app.py 适配新 graph、README.md 全面更新 | 魏博源 |
+| 2026-05-14 | Phase 1 重构：创建 src/graph/(state/nodes/edges/builder)、src/schemas/v3_engine.py、4 个 V3 Mock Tools、prompts.yaml；删除旧 src/agents/、旧 schemas、旧 tools | 魏博源 |
+| 2026-05-14 | V3 重构启动：CLAUDE.md 新增架构红线与状态同步铁律，AI_CONTEXT.md 全面重写为青山 V3 项目大脑 | 魏博源 |
 | 2026-05-08 | Phase 4 清理启动：删除旧目录(src/agent,src/models,compete_price.py)，readme/api_interface全面更新 | 魏博源 |
 | 2026-05-08 | 创建 CLAUDE.md：提取固定策略与行为准则，AI_CONTEXT.md §7 精简为环境配置+速查表 | 魏博源 |
 | 2026-05-08 | 协作规范再次扩充：新增分支策略(7.3)、.env保护说明、测试规范(7.6)、创建src/tests/目录 | 魏博源 |
@@ -264,9 +273,6 @@ conda activate energraph
 pip install -r requirements.txt
 ```
 
-> Windows 用户若 `conda` 不在 PATH，需先运行 Anaconda Prompt 或手动将 conda 加入 PATH。  
-> Docker 部署直接使用 `requirements.txt`，无需 conda，见 §8。
-
 **第三步：配置环境变量**
 ```bash
 cp .env.example .env
@@ -287,13 +293,14 @@ streamlit run src/frontend/app.py
 
 | 类别 | 速查要点 |
 |------|----------|
-| **代码规范** | 文件头 docstring / Type Hints / 绝对导入 / snake_case / try-except 返回 `{"error": ...}` |
+| **架构红线** | Agent 禁止手写能源计算 / Prompt 外部化 / 强类型 Pydantic |
+| **代码规范** | 文件头 docstring（注明对接 V3 引擎）/ Type Hints / 绝对导入 / snake_case / try-except 返回 `{"error": ...}` |
 | **分支策略** | main 保护 / `feature/<name>` 开发 / `fix/<name>` 修 Bug / PR 合并 |
-| **提交格式** | `[模块] 动词短语`（模块标签表见 CLAUDE.md） |
-| **测试规范** | `src/tests/test_<模块>.py` / 新工具必测 / 修 Bug 先写测试 |
-| **文档更新** | 变更后必须更新 `AI_CONTEXT.md` 对应章节 + 修改日志 |
+| **提交格式** | `[模块] 动词短语`（标签：tools/graph/schemas/config/frontend/utils/docs） |
+| **测试规范** | `src/tests/test_<模块>.py` / 新 Tool 必测 / 修 Bug 先写测试 |
+| **文档更新** | 变更后必须更新 `AI_CONTEXT.md` 对应章节 + 变更日志 |
 | **.env 保护** | 绝对禁止提交，不用 `git add .` |
-| **扩展方式** | 新工具→注册 TOOL_REGISTRY / 新节点→注册 graph / RAG→用 AgentState.context |
+| **状态同步** | 文件修改后更新 AI_CONTEXT.md / 架构问题前先读 AI_CONTEXT.md |
 
 ---
 
@@ -311,5 +318,5 @@ streamlit run src/frontend/app.py
 
 ---
 
-**最后更新**: 2026-05-08  
-**下一里程碑**: Phase 3 — 逐步重构执行
+**最后更新**: 2026-05-14  
+**下一里程碑**: Phase 1 — 交互流闭环与 API Mock Demo

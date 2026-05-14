@@ -1,57 +1,66 @@
-"""工具注册表"""
+"""工具注册表 — V3 引擎 Mock Tools
+
+所属层：tools
+依赖：src.tools.*
+对接 V3 引擎：PhysicsAI / TimeDiT / AIDC_Cooling
+"""
 from typing import Any, Callable, Dict
 
-from src.tools.compute_metrics import compute_metrics
-from src.tools.compare_price import compare_price
-from src.tools.calc_benefit import calc_benefit
+from src.tools.parse_intent import parse_business_intent
+from src.tools.query_timedit import query_timedit_forecast
+from src.tools.verify_physics import verify_physics_consistency
+from src.tools.fetch_aidc_cooling import fetch_aidc_cooling_status
 
-# ── 工具注册表 ──
-# 新增工具只需在此注册，Agent 自动可用
 TOOL_REGISTRY: Dict[str, Callable[..., Dict[str, Any]]] = {
-    "compute_metrics": compute_metrics,
-    "compare_price": compare_price,
-    "calc_benefit": calc_benefit,
+    "parse_business_intent": parse_business_intent,
+    "query_timedit_forecast": query_timedit_forecast,
+    "verify_physics_consistency": verify_physics_consistency,
+    "fetch_aidc_cooling_status": fetch_aidc_cooling_status,
 }
 
-# 工具元信息（供 LLM function calling 使用）
 TOOL_SCHEMAS = [
     {
-        "name": "compute_metrics",
-        "description": "分时段统计购电、储能充放电、光伏消纳等核心指标，返回总量和逐段分析",
+        "name": "parse_business_intent",
+        "description": "将自然语言或 ERP/MES 输入解析为 V3 DFL 可读的约束矩阵（ConstraintMatrix）",
         "parameters": {
             "type": "object",
             "properties": {
-                "load": {"type": "array", "items": {"type": "number"}, "description": "24小时负载(kWh)"},
-                "solar": {"type": "array", "items": {"type": "number"}, "description": "24小时光伏(kWh)"},
-                "grid_price": {"type": "array", "items": {"type": "number"}, "description": "24小时电价(元/kWh)"},
+                "user_input": {"type": "string", "description": "用户自然语言输入"},
             },
-            "required": ["load", "solar", "grid_price"],
+            "required": ["user_input"],
         },
     },
     {
-        "name": "compare_price",
-        "description": "对比不同时段购电价格，识别峰谷套利机会",
+        "name": "query_timedit_forecast",
+        "description": "调用 QingShan-TimeDiT 时序扩散模型，获取未来 24 小时光伏与负荷概率分布预测",
         "parameters": {
             "type": "object",
             "properties": {
-                "grid_price": {"type": "array", "items": {"type": "number"}, "description": "24小时电价(元/kWh)"},
+                "target_date": {"type": "string", "description": "目标日期，格式 YYYY-MM-DD"},
             },
-            "required": ["grid_price"],
+            "required": ["target_date"],
         },
     },
     {
-        "name": "calc_benefit",
-        "description": "计算调度方案与基准方案的成本/收益差异",
+        "name": "verify_physics_consistency",
+        "description": "调用 PhysicsAI 验证调度策略是否符合热力学热平衡与 SOC 衰减模型",
         "parameters": {
             "type": "object",
             "properties": {
-                "load": {"type": "array", "items": {"type": "number"}, "description": "24小时负载(kWh)"},
-                "solar": {"type": "array", "items": {"type": "number"}, "description": "24小时光伏(kWh)"},
-                "grid_price": {"type": "array", "items": {"type": "number"}, "description": "24小时电价(元/kWh)"},
-                "soc": {"type": "number", "description": "当前储能SOC"},
-                "max_power": {"type": "number", "description": "最大充放电功率(kW)"},
+                "strategy_id": {"type": "string", "description": "调度策略 ID"},
             },
-            "required": ["load", "solar", "grid_price"],
+            "required": ["strategy_id"],
+        },
+    },
+    {
+        "name": "fetch_aidc_cooling_status",
+        "description": "获取智算中心 GPU 负载队列与液冷状态，支持算力-冷却-储能协同调度解释",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "datacenter_id": {"type": "string", "description": "数据中心 ID"},
+            },
+            "required": ["datacenter_id"],
         },
     },
 ]
