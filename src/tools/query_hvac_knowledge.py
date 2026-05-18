@@ -24,7 +24,7 @@ def query_hvac_knowledge(question: str) -> Dict[str, Any]:
         question: 用户的暖通空调相关问题
 
     Returns:
-        HVACKnowledgeResult 的 dict 表示
+        HVACKnowledgeResult 的 dict 表示，或含 error 键的 dict
     """
     try:
         import chromadb
@@ -32,6 +32,11 @@ def query_hvac_knowledge(question: str) -> Dict[str, Any]:
 
         ef = OpenAIEmbeddingFunction(model_name="text-embedding-3-small")
         client = chromadb.PersistentClient(path=DB_PATH)
+
+        existing = [c.name for c in client.list_collections()]
+        if COLLECTION_NAME not in existing:
+            return {"error": "query_hvac_knowledge: 知识库尚未初始化，请先运行 python -m src.pipelines.rag_ingest"}
+
         col = client.get_collection(COLLECTION_NAME, embedding_function=ef)
 
         res = col.query(query_texts=[question], n_results=TOP_K)

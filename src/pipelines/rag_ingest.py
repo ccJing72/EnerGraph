@@ -6,7 +6,6 @@
 """
 import json
 import re
-import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -34,9 +33,24 @@ def _classify_system(system: str) -> str:
 
 
 def ingest(jsonl_path: str = str(JSONL_PATH), db_path: str = DB_PATH) -> int:
-    """将 JSONL 语料入库，返回入库条目数。"""
+    """将 JSONL 语料入库到 ChromaDB，幂等执行。
+
+    Args:
+        jsonl_path: HVAC 语料 JSONL 文件路径
+        db_path: ChromaDB 持久化目录
+
+    Returns:
+        入库条目总数
+
+    Raises:
+        FileNotFoundError: 语料文件不存在
+        ImportError: chromadb 未安装
+    """
     import chromadb
     from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction
+
+    if not Path(jsonl_path).exists():
+        raise FileNotFoundError(f"语料文件不存在: {jsonl_path}")
 
     ef = OpenAIEmbeddingFunction(model_name="text-embedding-3-small")
     client = chromadb.PersistentClient(path=db_path)
@@ -55,11 +69,14 @@ def ingest(jsonl_path: str = str(JSONL_PATH), db_path: str = DB_PATH) -> int:
     docs, metas, ids = [], [], []
     with open(jsonl_path, encoding="utf-8") as f:
         for i, line in enumerate(f):
-            d = json.loads(line)
-            msgs = d["messages"]
-            question = msgs[1]["content"]
-            answer = _clean_think(msgs[2]["content"])
-            system = msgs[0]["content"]
+            try:
+                d = json.loads(line)
+                msgs = d["messages"]
+                question = msgs[1]["content"]
+                answer = _clean_think(msgs[2]["content"])
+                system = msgs[0]["content"]
+            except (json.JSONDecodeError, KeyError, IndexError):
+                continue
 
             docs.append(f"问题：{question}\n回答：{answer}")
             metas.append({"system_type": _classify_system(system), "system": system[:100]})

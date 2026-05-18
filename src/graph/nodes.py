@@ -18,7 +18,7 @@ from src.tools import TOOL_REGISTRY, TOOL_SCHEMAS
 
 logger = logging.getLogger(__name__)
 
-_PROMPTS_PATH = Path(__file__).resolve().parents[2] / "config" / "prompts.yaml"
+_PROMPTS_PATH = Path(__file__).resolve().parents[2] / "src" / "config" / "prompts.yaml"
 _prompts: Dict[str, Any] = {}
 
 
