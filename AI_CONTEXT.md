@@ -1,8 +1,8 @@
 # 青山 V3 多模态调度 Agent — 项目上下文
 
 ## 项目状态
-**当前阶段**: Phase 1 — V3 架构适配与企业级解耦重构  
-**最后更新**: 2026-05-14  
+**当前阶段**: Phase 1 完成 — HVAC 知识库集成 + 对话 Agent 可运行  
+**最后更新**: 2026-05-18  
 **项目性质**: 企业级落地方案，不公开  
 **GitHub**: https://github.com/Webr1ng/EnerGraph.git  
 **Python 环境**: conda `energraph` / Python 3.11（LangGraph 官方要求 ≥3.10）
@@ -35,7 +35,8 @@
            ▼
 ┌──────────────────────────┐
 │ 2. Engine Invocation     │  并行调用 Mock Tools:
-│    (V3_Engine_Router)    │  - Tool_TimeDiT (时序预测)
+│    (V3_Engine_Router)    │  - Tool_HVAC_RAG (暖通知识库检索) ← 新增
+│                          │  - Tool_TimeDiT (时序预测)
 │                          │  - Tool_PhysicsAI (物理验证)
 │                          │  - Tool_AIDC_Cooling (液冷状态)
 └──────────┬───────────────┘
@@ -116,9 +117,9 @@ EnerGraph/
     │   ├── nodes.py               # cognitive_parser / v3_engine_router / interpreter_generator
     │   ├── edges.py               # should_continue 条件路由
     │   └── builder.py             # 图组装与编译，graph 全局单例
-    ├── pipelines/                 # 【预留】数据处理流水线
-    │   ├── rag_ingest.py
-    │   └── sft_export.py
+    ├── pipelines/                 # ✅ 数据处理流水线
+    │   ├── rag_ingest.py          # HVAC 语料库入库 ChromaDB（5613 条）
+    │   └── sft_export.py          # SFT 数据清洗导出（预留）
     ├── memory/                    # 【预留】记忆管理
     │   └── checkpointer.py        # Checkpointer 配置，实例在 graph/builder.py 中注入
     ├── services/                  # 【预留】FastAPI 服务层
@@ -126,7 +127,7 @@ EnerGraph/
     ├── utils/
     │   └── report_builder.py
     ├── frontend/
-    │   └── app.py                 # Streamlit 多模态交互（待适配新架构）
+    │   └── app.py                 # ✅ Streamlit 对话式交互（支持 HVAC 问答 + 调度分析）
     └── tests/
         ├── test_tools.py
         └── test_graph.py
@@ -180,6 +181,7 @@ AIDC_CoolingStatus:
 | `query_timedit_forecast` | 时序预测 | QingShan-TimeDiT |
 | `verify_physics_consistency` | 物理验证 | PhysicsAI |
 | `fetch_aidc_cooling_status` | 液冷状态 | AIDC 智算中心 |
+| `query_hvac_knowledge` | HVAC 知识库检索 | ChromaDB RAG（5613 条） |
 
 ### 4.3 Agent 状态（agent_state.py 待重构）
 
@@ -218,7 +220,10 @@ AgentState (TypedDict):
 - [x] 删除旧 src/agents/、旧 schemas、旧 tools
 - [x] 适配 src/frontend/app.py 接入新 graph
 - [x] 更新 README.md
-- [ ] 配置 .env 填入 API Key，端到端测试 Demo
+- [x] 集成 HVAC 知识库 RAG（5613 条语料，ChromaDB + OpenAI Embedding）
+- [x] 新增 query_hvac_knowledge 工具 + HVACKnowledgeResult 模型
+- [x] 前端升级为对话模式（chat_input + 历史记录）
+- [ ] 配置 .env 填入 API Key，运行 `python -m src.pipelines.rag_ingest` 入库，端到端测试
 
 ### Phase 2: 物理/算法插件对接
 - [ ] 将 Mock 工具替换为真实内部 gRPC/HTTP 调用
@@ -234,6 +239,7 @@ AgentState (TypedDict):
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-05-18 | 集成 HVAC 知识库 RAG：rag_ingest.py、query_hvac_knowledge 工具、HVACKnowledgeResult 模型、前端升级对话模式 | 魏博源 |
 | 2026-05-14 | Phase 1 全部完成：frontend/app.py 适配新 graph、README.md 全面更新 | 魏博源 |
 | 2026-05-14 | Phase 1 重构：创建 src/graph/(state/nodes/edges/builder)、src/schemas/v3_engine.py、4 个 V3 Mock Tools、prompts.yaml；删除旧 src/agents/、旧 schemas、旧 tools | 魏博源 |
 | 2026-05-14 | V3 重构启动：CLAUDE.md 新增架构红线与状态同步铁律，AI_CONTEXT.md 全面重写为青山 V3 项目大脑 | 魏博源 |

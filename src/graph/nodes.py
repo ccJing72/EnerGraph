@@ -94,6 +94,7 @@ def v3_engine_router_node(state: AgentState) -> Dict[str, Any]:
             "verify_physics_consistency": "physics_verification",
             "fetch_aidc_cooling_status": "aidc_cooling",
             "parse_business_intent": "constraints",
+            "query_hvac_knowledge": "hvac_knowledge",
         }
         if name in _field_map and "error" not in result:
             updates[_field_map[name]] = result
@@ -126,6 +127,7 @@ def interpreter_generator_node(state: AgentState) -> Dict[str, Any]:
             "timedit_data": state.get("timedit_data"),
             "physics_verification": state.get("physics_verification"),
             "aidc_cooling": state.get("aidc_cooling"),
+            "hvac_knowledge": state.get("hvac_knowledge"),
         },
         ensure_ascii=False,
         indent=2,
