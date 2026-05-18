@@ -47,12 +47,16 @@ def ingest(jsonl_path: str = str(JSONL_PATH), db_path: str = DB_PATH) -> int:
         ImportError: chromadb 未安装
     """
     import chromadb
-    from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction
 
     if not Path(jsonl_path).exists():
         raise FileNotFoundError(f"语料文件不存在: {jsonl_path}")
 
-    ef = OpenAIEmbeddingFunction(model_name="text-embedding-3-small")
+    try:
+        from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
+        ef = ONNXMiniLM_L6_V2(preferred_providers=["CPUExecutionProvider"])
+    except ImportError:
+        from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+        ef = SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
     client = chromadb.PersistentClient(path=db_path)
 
     existing = [c.name for c in client.list_collections()]

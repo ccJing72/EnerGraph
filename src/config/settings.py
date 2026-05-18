@@ -70,11 +70,14 @@ def _load_yaml_config(yaml_path: Optional[Path] = None) -> Dict[str, Any]:
 def _apply_env_overrides(config: Dict[str, Any]) -> Dict[str, Any]:
     """用环境变量覆盖 YAML 配置"""
     env_map = {
+        "LLM_PROVIDER": ("model", "provider"),
         "OPENAI_API_KEY": ("api_key", None),
         "OPENAI_MODEL": ("model", "name"),
         "OPENAI_BASE_URL": ("model", "base_url"),
         "ANTHROPIC_API_KEY": ("api_key", None),
         "ANTHROPIC_MODEL": ("model", "name"),
+        "DEEPSEEK_API_KEY": ("api_key", None),
+        "DEEPSEEK_MODEL": ("model", "name"),
         "AGENT_TEMPERATURE": ("model", "temperature"),
         "AGENT_MAX_ITERATIONS": ("agent", "max_iterations"),
         "LOG_LEVEL": ("log_level", None),

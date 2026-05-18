@@ -28,9 +28,13 @@ def query_hvac_knowledge(question: str) -> Dict[str, Any]:
     """
     try:
         import chromadb
-        from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction
 
-        ef = OpenAIEmbeddingFunction(model_name="text-embedding-3-small")
+        try:
+            from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
+            ef = ONNXMiniLM_L6_V2(preferred_providers=["CPUExecutionProvider"])
+        except ImportError:
+            from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+            ef = SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
         client = chromadb.PersistentClient(path=DB_PATH)
 
         existing = [c.name for c in client.list_collections()]

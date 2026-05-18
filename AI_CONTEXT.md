@@ -5,6 +5,7 @@
 **最后更新**: 2026-05-18  
 **项目性质**: 企业级落地方案，不公开  
 **GitHub**: https://github.com/Webr1ng/EnerGraph.git  
+**GitLab**: git@172.16.3.160:ai-group/energraph.git  
 **Python 环境**: conda `energraph` / Python 3.11（LangGraph 官方要求 ≥3.10）
 
 ---
@@ -58,7 +59,8 @@
 | 类别 | 技术 | 用途 |
 |------|------|------|
 | 核心框架 | LangGraph 0.2.x | ReAct 状态图编排 |
-| 大模型 | LangChain + OpenAI/Claude | 意图解析与报告生成 |
+| 大模型 | LangChain + DeepSeek V4 / OpenAI / Claude（LLM_PROVIDER 切换） | 意图解析与报告生成 |
+| Embedding | ChromaDB ONNX（all-MiniLM-L6-v2）本地模型 | HVAC 语料向量化，零外部 API 依赖 |
 | 数据验证 | Pydantic 2.x | Tool Inputs/Outputs 类型约束（AgentState 用 TypedDict） |
 | 可观测性 | LangSmith | Agent 执行链路追踪与调试（需配置 `LANGCHAIN_TRACING_V2=true`） |
 | 前端 | Streamlit 1.39 | 多模态交互可视化 |
@@ -181,7 +183,7 @@ AIDC_CoolingStatus:
 | `query_timedit_forecast` | 时序预测 | QingShan-TimeDiT |
 | `verify_physics_consistency` | 物理验证 | PhysicsAI |
 | `fetch_aidc_cooling_status` | 液冷状态 | AIDC 智算中心 |
-| `query_hvac_knowledge` | HVAC 知识库检索 | ChromaDB RAG（5613 条） |
+| `query_hvac_knowledge` | HVAC 知识库检索 | ChromaDB RAG（5613 条，ONNX 本地 Embedding） |
 
 ### 4.3 Agent 状态（agent_state.py 待重构）
 
@@ -223,11 +225,13 @@ AgentState (TypedDict):
 - [x] 集成 HVAC 知识库 RAG（5613 条语料，ChromaDB + OpenAI Embedding）
 - [x] 新增 query_hvac_knowledge 工具 + HVACKnowledgeResult 模型
 - [x] 前端升级为对话模式（chat_input + 历史记录）
-- [ ] 配置 .env 填入 API Key，运行 `python -m src.pipelines.rag_ingest` 入库，端到端测试
+- [x] 配置 .env 填入 API Key（DeepSeek V4），运行 rag_ingest 入库（5613 条），端到端测试通过
+- [x] RAG Embedding 切换为 ChromaDB 内置 ONNX 本地模型（零外部 API Key 依赖）
+- [x] 新增 LLM_PROVIDER 显式供应商切换（deepseek/openai/anthropic）
+- [x] 前端示例问题精简为纯 HVAC 问答（移除预测/调度类问题）
 
 ### Phase 2: 物理/算法插件对接
 - [ ] 将 Mock 工具替换为真实内部 gRPC/HTTP 调用
-- [ ] 引入企业内部知识库（RAG）
 
 ### Phase 3: eFlex 平台集成与闭环监控
 - [ ] 配合 eFlex 每 15 分钟滚动优化，上线动态 Agent 看板
@@ -239,6 +243,7 @@ AgentState (TypedDict):
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-05-18 | LLM_PROVIDER 显式供应商切换、DeepSeek V4 API 适配、Embedding 切本地 ONNX、前端示例精简 | 魏博源 |
 | 2026-05-18 | 集成 HVAC 知识库 RAG：rag_ingest.py、query_hvac_knowledge 工具、HVACKnowledgeResult 模型、前端升级对话模式 | 魏博源 |
 | 2026-05-14 | Phase 1 全部完成：frontend/app.py 适配新 graph、README.md 全面更新 | 魏博源 |
 | 2026-05-14 | Phase 1 重构：创建 src/graph/(state/nodes/edges/builder)、src/schemas/v3_engine.py、4 个 V3 Mock Tools、prompts.yaml；删除旧 src/agents/、旧 schemas、旧 tools | 魏博源 |
@@ -301,7 +306,7 @@ streamlit run src/frontend/app.py
 |------|----------|
 | **架构红线** | Agent 禁止手写能源计算 / Prompt 外部化 / 强类型 Pydantic |
 | **代码规范** | 文件头 docstring（注明对接 V3 引擎）/ Type Hints / 绝对导入 / snake_case / try-except 返回 `{"error": ...}` |
-| **分支策略** | main 保护 / `feature/<name>` 开发 / `fix/<name>` 修 Bug / PR 合并 |
+| **分支策略** | main 直接开发（当前阶段），后续按需创建 feature/fix 分支 |
 | **提交格式** | `[模块] 动词短语`（标签：tools/graph/schemas/config/frontend/utils/docs） |
 | **测试规范** | `src/tests/test_<模块>.py` / 新 Tool 必测 / 修 Bug 先写测试 |
 | **文档更新** | 变更后必须更新 `AI_CONTEXT.md` 对应章节 + 变更日志 |
@@ -324,5 +329,5 @@ streamlit run src/frontend/app.py
 
 ---
 
-**最后更新**: 2026-05-14  
-**下一里程碑**: Phase 1 — 交互流闭环与 API Mock Demo
+**最后更新**: 2026-05-18  
+**下一里程碑**: 配置 API Key → rag_ingest 入库 → 端到端测试

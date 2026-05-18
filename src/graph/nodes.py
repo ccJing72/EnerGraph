@@ -31,11 +31,22 @@ def _load_prompts() -> Dict[str, Any]:
 
 
 def _get_llm(bind_tools: bool = False):
-    provider = settings.model.provider.lower()
+    import os
+
+    provider = os.getenv("LLM_PROVIDER", settings.model.provider).lower()
     model_name = settings.model.name
     temperature = settings.model.temperature
 
-    if provider == "anthropic":
+    if provider == "deepseek":
+        from langchain_openai import ChatOpenAI
+        llm = ChatOpenAI(
+            model=model_name,
+            temperature=temperature,
+            base_url="https://api.deepseek.com/v1",
+            api_key=os.getenv("DEEPSEEK_API_KEY"),
+            extra_body={"thinking": {"type": "disabled"}},
+        )
+    elif provider == "anthropic":
         from langchain_anthropic import ChatAnthropic
         llm = ChatAnthropic(model=model_name, temperature=temperature)
     else:

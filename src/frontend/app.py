@@ -4,6 +4,13 @@
 依赖：streamlit, src.graph.builder
 对接 V3 引擎：N/A（通过 graph 间接调用）
 """
+import sys
+from pathlib import Path
+
+_src_root = Path(__file__).resolve().parents[2]
+if str(_src_root) not in sys.path:
+    sys.path.insert(0, str(_src_root))
+
 import streamlit as st
 
 from src.graph.builder import graph
@@ -20,14 +27,14 @@ if "chat_history" not in st.session_state:
 with st.sidebar:
     st.header("配置")
     target_date = st.text_input("目标日期（调度场景）", value="2026-05-15")
-    datacenter_id = st.text_input("数据中心 ID（AIDC 场景）", value="DC-SH-01")
+    datacenter_id = st.text_input("数据中心 ID（AIDC 场景）", value="Mock 假数据")
     st.divider()
     st.markdown("**示例问题**")
     examples = [
         "冷水机组 COP 如何计算？",
         "地铁车站环控系统如何节能优化？",
-        "明天产线全开，评估能耗风险",
         "冷冻水系统出现压差异常如何诊断？",
+        "ASHRAE 标准中空调系统能效有哪些要求？",
     ]
     for ex in examples:
         if st.button(ex, use_container_width=True):
