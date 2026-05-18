@@ -19,6 +19,12 @@ st.set_page_config(page_title="青山 V3 多模态调度 Agent", layout="wide")
 st.title("青山 V3 多模态调度 Agent")
 st.caption("暖通空调专家问答 · 能源调度分析 · 基于 QingShan-TimeDiT + PhysicsAI")
 
+NODE_LABELS = {
+    "cognitive_parser": "意图解析 — 分析问题类型，选择合适工具",
+    "v3_engine_router": "工具调用 — 检索知识库 / 查询引擎数据",
+    "interpreter_generator": "生成回答 — 综合数据，撰写报告",
+}
+
 # 初始化对话历史
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
@@ -60,46 +66,80 @@ if user_input:
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # 调用 Agent
+    # 调用 Agent（流式显示 ReAct 步骤）
     with st.chat_message("assistant"):
-        with st.spinner("Agent 正在分析..."):
-            try:
-                full_input = (
-                    f"{user_input}\n"
-                    f"[target_date={target_date}, datacenter_id={datacenter_id}]"
-                )
-                result = graph.invoke({"user_input": full_input})
-                report = result.get("final_report", "（无回答）")
-                st.markdown(report)
+        step_placeholder = st.empty()
+        report_placeholder = st.empty()
+        error_placeholder = st.empty()
+        details_placeholder = st.empty()
 
-                # 展示工具调用详情
-                details = {}
-                if result.get("hvac_knowledge"):
-                    details["HVAC 知识库检索"] = result["hvac_knowledge"]
-                if result.get("timedit_data"):
-                    details["TimeDiT 预测"] = result["timedit_data"]
-                if result.get("physics_verification"):
-                    details["PhysicsAI 验证"] = result["physics_verification"]
-                if result.get("aidc_cooling"):
-                    details["AIDC 液冷状态"] = result["aidc_cooling"]
-                if result.get("constraints"):
-                    details["意图解析（ConstraintMatrix）"] = result["constraints"]
+        try:
+            full_input = (
+                f"{user_input}\n"
+                f"[target_date={target_date}, datacenter_id={datacenter_id}]"
+            )
 
-                if details:
-                    with st.expander("引擎数据详情"):
-                        for label, data in details.items():
-                            st.subheader(label)
-                            st.json(data)
+            steps = []
+            result = {}
+            tool_names = []
 
-                if result.get("error"):
-                    st.warning(f"Agent 警告: {result['error']}")
+            with st.status("Agent 思考中...", expanded=True) as status:
+                for event in graph.stream(
+                    {"user_input": full_input}, stream_mode="updates"
+                ):
+                    for node_name, update in event.items():
+                        # 收集工具名称
+                        msgs = update.get("messages", [])
+                        for msg in msgs:
+                            if hasattr(msg, "tool_calls") and msg.tool_calls:
+                                tool_names = [tc["name"] for tc in msg.tool_calls]
 
-                st.session_state.chat_history.append({"role": "assistant", "content": report})
+                        # 生成步骤描述
+                        label = NODE_LABELS.get(node_name, node_name)
+                        if node_name == "v3_engine_router" and tool_names:
+                            label += f"（{', '.join(tool_names)}）"
 
-            except Exception as e:
-                err = f"运行出错: {e}"
-                st.error(err)
-                st.session_state.chat_history.append({"role": "assistant", "content": err})
+                        steps.append(f"✅ {label}")
+                        step_placeholder.markdown("\n".join(steps))
+
+                        # 合并最终结果
+                        for k, v in update.items():
+                            if k not in ("messages",):
+                                result[k] = v
+
+                status.update(label="思考完成", state="complete")
+
+            report = result.get("final_report", "（无回答）")
+            report_placeholder.markdown(report)
+
+            # 展示工具调用详情
+            details = {}
+            if result.get("hvac_knowledge"):
+                details["HVAC 知识库检索"] = result["hvac_knowledge"]
+            if result.get("timedit_data"):
+                details["TimeDiT 预测"] = result["timedit_data"]
+            if result.get("physics_verification"):
+                details["PhysicsAI 验证"] = result["physics_verification"]
+            if result.get("aidc_cooling"):
+                details["AIDC 液冷状态"] = result["aidc_cooling"]
+            if result.get("constraints"):
+                details["意图解析（ConstraintMatrix）"] = result["constraints"]
+
+            if details:
+                with st.expander("引擎数据详情"):
+                    for label, data in details.items():
+                        st.subheader(label)
+                        st.json(data)
+
+            if result.get("error"):
+                error_placeholder.warning(f"警告: {result['error']}")
+
+            st.session_state.chat_history.append({"role": "assistant", "content": report})
+
+        except Exception as e:
+            err = f"运行出错: {e}"
+            st.error(err)
+            st.session_state.chat_history.append({"role": "assistant", "content": err})
 
 st.markdown("---")
 st.caption("Phase 1 Demo · HVAC 知识库 5613 条 · V3 引擎为 Mock 数据")
