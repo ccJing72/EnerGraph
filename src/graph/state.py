@@ -12,6 +12,7 @@ from langgraph.graph.message import add_messages
 from src.schemas.v3_engine import (
     AIDCCoolingStatus,
     ConstraintMatrix,
+    HVACKnowledgeResult,
     PhysicsResidual,
     TimeDiTForecast,
 )
@@ -33,6 +34,9 @@ class AgentState(TypedDict, total=False):
     timedit_data: Optional[TimeDiTForecast]
     physics_verification: Optional[PhysicsResidual]
     aidc_cooling: Optional[AIDCCoolingStatus]
+
+    # HVAC 知识库检索结果
+    hvac_knowledge: Optional[HVACKnowledgeResult]
 
     # RAG 预留
     context: Optional[str]

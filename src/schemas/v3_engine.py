@@ -42,3 +42,12 @@ class AIDCCoolingStatus(BaseModel):
     liquid_cooling_temp: float
     pre_cooling_policy: str
     power_draw_kw: float
+
+
+class HVACKnowledgeResult(BaseModel):
+    """HVAC 知识库 RAG 检索结果"""
+    query: str
+    results: List[str]          # Top-K 相关 Q&A 文本
+    system_types: List[str]     # 对应的场景类型（metro/commercial/standard/general）
+    distances: List[float]      # 相似度距离（越小越相关）
+
