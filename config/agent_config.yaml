@@ -1,27 +1,23 @@
-# Agent 配置文件
+# Agent 配置文件（默认值，优先级: 环境变量 > 此文件）
+# 实际运行时由 .env 中的 LLM_PROVIDER / DEEPSEEK_MODEL 等覆盖
 
 # 模型配置
 model:
-  provider: "openai"  # openai 或 anthropic
-  name: "gpt-4"
+  provider: "openai"          # .env LLM_PROVIDER 覆盖: deepseek | openai | anthropic
+  name: "gpt-4o"              # .env DEEPSEEK_MODEL / OPENAI_MODEL / ANTHROPIC_MODEL 覆盖
   temperature: 0.7
   max_tokens: 2000
 
 # Agent 配置
 agent:
-  max_iterations: 10
+  max_iterations: 10          # .env AGENT_MAX_ITERATIONS 覆盖
   timeout: 60
 
-# 工具列表
-tools:
-  - name: "compute_metrics"
-    description: "分时段统计购电、售电、储能充放电、光伏消纳等核心指标"
-  - name: "compare_price"
-    description: "对比不同时段的购/售电价，识别峰谷套利机会"
-  - name: "calc_benefit"
-    description: "基于调度数据计算预计成本/收益，对比基准方案"
+# 工具列表（代码中通过 src/tools/__init__.py 的 TOOL_REGISTRY 注册，此处仅作记录）
+# 当前工具：parse_business_intent, query_timedit_forecast, verify_physics_consistency,
+#           fetch_aidc_cooling_status, query_hvac_knowledge
 
 # 输出配置
 output:
-  language: "zh"  # zh 或 en
+  language: "zh"
   format: "markdown"

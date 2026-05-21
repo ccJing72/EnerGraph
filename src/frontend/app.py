@@ -19,8 +19,8 @@ st.set_page_config(page_title="青山 V3 多模态调度 Agent", layout="wide")
 st.title("青山 V3 多模态调度 Agent")
 st.caption("暖通空调专家问答 · 能源调度分析 · 基于 QingShan-TimeDiT + PhysicsAI")
 
-NODE_LABELS = {
-    "cognitive_parser": "意图解析 — 分析问题类型，选择合适工具",
+NODE_STEPS = {
+    "cognitive_parser": "意图解析 — 分析问题类型，选择工具",
     "v3_engine_router": "工具调用 — 检索知识库 / 查询引擎数据",
     "interpreter_generator": "生成回答 — 综合数据，撰写报告",
 }
@@ -66,53 +66,86 @@ if user_input:
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # 调用 Agent（流式显示 ReAct 步骤）
+    # 调用 Agent（token 级流式）
     with st.chat_message("assistant"):
-        step_placeholder = st.empty()
-        report_placeholder = st.empty()
-        error_placeholder = st.empty()
-        details_placeholder = st.empty()
-
         try:
             full_input = (
                 f"{user_input}\n"
                 f"[target_date={target_date}, datacenter_id={datacenter_id}]"
             )
 
+            answer_ph = st.empty()
+            think_ph = st.empty()
+            steps_ph = st.empty()
+
+            answer_text = ""
+            think_text = ""
             steps = []
             result = {}
             tool_names = []
+            seen_nodes = set()
+            current_node = None
 
-            with st.status("Agent 思考中...", expanded=True) as status:
-                for event in graph.stream(
-                    {"user_input": full_input}, stream_mode="updates"
-                ):
-                    for node_name, update in event.items():
-                        # 收集工具名称
-                        msgs = update.get("messages", [])
-                        for msg in msgs:
-                            if hasattr(msg, "tool_calls") and msg.tool_calls:
-                                tool_names = [tc["name"] for tc in msg.tool_calls]
+            for event in graph.stream(
+                {"user_input": full_input},
+                stream_mode=["updates", "messages"],
+            ):
+                mode, data = event
 
-                        # 生成步骤描述
-                        label = NODE_LABELS.get(node_name, node_name)
-                        if node_name == "v3_engine_router" and tool_names:
-                            label += f"（{', '.join(tool_names)}）"
+                if mode == "messages":
+                    chunk, meta = data
+                    node = meta.get("langgraph_node", "")
 
-                        steps.append(f"✅ {label}")
-                        step_placeholder.markdown("\n".join(steps))
+                    # 节点切换时更新步骤
+                    if node and node != current_node:
+                        current_node = node
+                        if node not in seen_nodes:
+                            seen_nodes.add(node)
+                            if node in NODE_STEPS:
+                                label = NODE_STEPS[node]
+                                if node == "v3_engine_router" and tool_names:
+                                    label += f"（{', '.join(tool_names)}）"
+                                steps.append(f"✅ {label}")
+                                steps_ph.markdown("\n".join(steps))
 
-                        # 合并最终结果
+                    # 检测工具调用
+                    if hasattr(chunk, "tool_call_chunks") and chunk.tool_call_chunks:
+                        for tc in chunk.tool_call_chunks:
+                            if tc.get("name") and tc["name"] not in tool_names:
+                                tool_names.append(tc["name"])
+
+                    # 流式文本
+                    content = chunk.content if hasattr(chunk, "content") and chunk.content else ""
+                    if content:
+                        if node == "interpreter_generator":
+                            answer_text += content
+                            answer_ph.markdown(answer_text + "▌")
+                        elif node == "cognitive_parser":
+                            think_text += content
+                            think_ph.caption(f"💭 {think_text[:200]}{'…' if len(think_text) > 200 else ''}")
+
+                elif mode == "updates":
+                    for node_name, update in data.items():
+                        # 确保节点出现在步骤中
+                        if node_name not in seen_nodes:
+                            seen_nodes.add(node_name)
+                            if node_name in NODE_STEPS:
+                                label = NODE_STEPS[node_name]
+                                if node_name == "v3_engine_router" and tool_names:
+                                    label += f"（{', '.join(tool_names)}）"
+                                steps.append(f"✅ {label}")
+                                steps_ph.markdown("\n".join(steps))
+                        # 合并结果
                         for k, v in update.items():
                             if k not in ("messages",):
                                 result[k] = v
 
-                status.update(label="思考完成", state="complete")
+            # 最终输出
+            final = answer_text or result.get("final_report", "（无回答）")
+            answer_ph.markdown(final)
+            think_ph.empty()
 
-            report = result.get("final_report", "（无回答）")
-            report_placeholder.markdown(report)
-
-            # 展示工具调用详情
+            # 工具调用详情
             details = {}
             if result.get("hvac_knowledge"):
                 details["HVAC 知识库检索"] = result["hvac_knowledge"]
@@ -132,14 +165,17 @@ if user_input:
                         st.json(data)
 
             if result.get("error"):
-                error_placeholder.warning(f"警告: {result['error']}")
+                st.warning(f"警告: {result['error']}")
 
-            st.session_state.chat_history.append({"role": "assistant", "content": report})
+            st.session_state.chat_history.append({"role": "assistant", "content": final})
 
         except Exception as e:
-            err = f"运行出错: {e}"
-            st.error(err)
-            st.session_state.chat_history.append({"role": "assistant", "content": err})
+            import traceback
+            err_detail = traceback.format_exc()
+            st.error(f"运行出错: {e}")
+            with st.expander("调试详情"):
+                st.code(err_detail)
+            st.session_state.chat_history.append({"role": "assistant", "content": f"运行出错: {e}"})
 
 st.markdown("---")
 st.caption("Phase 1 Demo · HVAC 知识库 5613 条 · V3 引擎为 Mock 数据")

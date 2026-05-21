@@ -44,14 +44,15 @@ def _get_llm(bind_tools: bool = False):
             temperature=temperature,
             base_url="https://api.deepseek.com/v1",
             api_key=os.getenv("DEEPSEEK_API_KEY"),
+            streaming=True,
             extra_body={"thinking": {"type": "disabled"}},
         )
     elif provider == "anthropic":
         from langchain_anthropic import ChatAnthropic
-        llm = ChatAnthropic(model=model_name, temperature=temperature)
+        llm = ChatAnthropic(model=model_name, temperature=temperature, streaming=True)
     else:
         from langchain_openai import ChatOpenAI
-        llm = ChatOpenAI(model=model_name, temperature=temperature)
+        llm = ChatOpenAI(model=model_name, temperature=temperature, streaming=True)
 
     return llm.bind_tools(TOOL_SCHEMAS) if bind_tools else llm
 
