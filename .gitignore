@@ -59,3 +59,10 @@ models/
 # Temporary files
 tmp/
 temp/
+
+# Large data files & local docs
+*.jsonl
+*.docx
+data/
+docs/周报_*.md
+docs/演示文档_*.md
