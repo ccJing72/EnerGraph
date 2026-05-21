@@ -112,7 +112,6 @@ EnerGraph/
 │   └── agent_config.yaml      # 默认配置（.env 优先覆盖）
 ├── docs/                      # 各阶段开发 plan（每个 session 只读对应 plan）
 │   ├── plan_phase2_action_agent.md  # Action Agent：FastAPI SSE + UIAction + Java 工具
-│   ├── plan_phase2_api.md           # 原 FastAPI 基础规划（已被上文取代，保留参考）
 │   ├── plan_phase3_rag.md           # RAG 质量优化
 │   ├── plan_phase4_realapi.md       # 真实 API 对接
 │   └── plan_phase5_voice.md         # 语音助手
@@ -173,7 +172,6 @@ EnerGraph/
 | Phase 5 | 语音助手（Whisper STT + TTS） | 待开始 | `docs/plan_phase5_voice.md` |
 
 **阶段顺序可以调整**，plan 文件相互独立。Phase 4 依赖算法团队 API 就绪，可与 Phase 3 并行。Phase 5 只依赖 Phase 2（API 层）。  
-**Phase 2 升级说明**: 原 FastAPI 基础规划（`plan_phase2_api.md`）已升级为 Action Agent 模式，新增 UIAction 跳转信号和 Java 后端工具层，原文件保留作参考。
 
 **每个 session 开发流程**:
 ```
