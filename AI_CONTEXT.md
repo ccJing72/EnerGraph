@@ -59,7 +59,7 @@ Phase 5: 语音助手（语音输入 + 语音输出）
 | 数据验证 | Pydantic 2.x | Tool I/O 强类型；AgentState 用 TypedDict |
 | 可观测性 | LangSmith | 执行链路追踪（`LANGCHAIN_TRACING_V2=true`） |
 | 前端（演示） | Streamlit 1.39 | token 级流式展示 ReAct 思考过程 |
-| 配置 | python-dotenv + PyYAML | Prompt 外部化，环境隔离 |
+| 配置 | python-dotenv + PyYAML | Prompt 集中管理（prompts.yaml）、版本控制、环境隔离 |
 | Python | 3.11 | |
 
 ### 2.2 LangGraph ReAct 状态图
@@ -118,7 +118,7 @@ EnerGraph/
 └── src/
     ├── config/
     │   ├── settings.py        # 配置加载（LLM_PROVIDER / DEEPSEEK_MODEL 等）
-    │   └── prompts.yaml       # System Prompt 模板（外部化，禁止硬编码）
+    │   └── prompts.yaml       # 【唯一入口】所有 System Prompt 集中管理 + 版本控制
     ├── schemas/
     │   └── v3_engine.py       # Pydantic 模型：ConstraintMatrix / TimeDiTForecast /
     │                          #   PhysicsResidual / AIDCCoolingStatus / HVACKnowledgeResult
@@ -187,6 +187,7 @@ EnerGraph/
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-05-21 | 工程规范升级：Prompt 强制集中管理 + 版本控制（CLAUDE.md/AI_CONTEXT.md 同步更新） | 魏博源 |
 | 2026-05-21 | Phase 2 升级为 Action Agent：UIAction 跳转信号 + Java 后端工具层，创建 plan_phase2_action_agent.md | 魏博源 |
 | 2026-05-21 | 规划 Phase 2-5，创建 docs/plan_*.md，精简并重写 AI_CONTEXT | 魏博源 |
 | 2026-05-21 | token 级流式前端（stream_mode=messages），streaming=True | 魏博源 |

@@ -152,9 +152,23 @@ git push origin main
 2. 在 `src/graph/builder.py` 注册到状态图
 3. 更新 `AI_CONTEXT.md` §2
 
-### Prompt 外部化
-- 所有 System Prompt / 模板存入 `src/config/prompts.yaml`
-- 通过 `src/config/settings.py` 加载，禁止在节点代码中硬编码 Prompt 字符串
+### Prompt 管理规范（强制集中管理 + 版本控制）
+
+**原则**: 所有大模型 Prompt 统一收拢至 `src/config/prompts.yaml` 集中管理，任何节点代码不得硬编码 Prompt 字符串。
+
+**存放规则**:
+- **唯一入口**: `src/config/prompts.yaml` 是 System Prompt / 模板的**唯一存放位置**。禁止将 Prompt 分散到 Python 代码、`.env`、Markdown 或其他 YAML 文件中
+- **加载方式**: 通过 `src/config/settings.py` → `settings.prompts` 统一加载，Graph 节点只引用 key，不自行读文件
+- **命名规范**: Prompt key 使用 `snake_case`，按节点/场景命名（如 `cognitive_parser`, `interpreter_generator`, `hvac_expert`, `action_agent_nav_hint`）
+
+**版本控制要求**:
+- 每次修改 `prompts.yaml` 必须以 `[config]` 标签单独 commit，commit message 写明修改的 prompt key 和改动目的
+- 禁止将 Prompt 调优和代码改动混在同一个 commit 中——Prompt 迭代与代码变更独立溯源
+- 多人协作时，prompts.yaml 的修改冲突需人工确认，禁止自动合并
+
+**代码审查红线**:
+- PR diff 中出现任何硬编码的 Prompt 字符串（含 `system=`、`SystemMessage(content=` 等），审查人必须拒绝合并
+- 例外：单元测试中 mock LLM 调用时可使用占位字符串，但需加注释 `# mock prompt, 不从 prompts.yaml 加载`
 
 ### RAG 扩展
 - 入库：`src/pipelines/rag_ingest.py`
