@@ -111,10 +111,11 @@ EnerGraph/
 ├── config/
 │   └── agent_config.yaml      # 默认配置（.env 优先覆盖）
 ├── docs/                      # 各阶段开发 plan（每个 session 只读对应 plan）
-│   ├── plan_phase2_api.md     # FastAPI REST API
-│   ├── plan_phase3_rag.md     # RAG 质量优化
-│   ├── plan_phase4_realapi.md # 真实 API 对接
-│   └── plan_phase5_voice.md   # 语音助手
+│   ├── plan_phase2_action_agent.md  # Action Agent：FastAPI SSE + UIAction + Java 工具
+│   ├── plan_phase2_api.md           # 原 FastAPI 基础规划（已被上文取代，保留参考）
+│   ├── plan_phase3_rag.md           # RAG 质量优化
+│   ├── plan_phase4_realapi.md       # 真实 API 对接
+│   └── plan_phase5_voice.md         # 语音助手
 └── src/
     ├── config/
     │   ├── settings.py        # 配置加载（LLM_PROVIDER / DEEPSEEK_MODEL 等）
@@ -166,12 +167,13 @@ EnerGraph/
 | 阶段 | 内容 | 状态 | Plan |
 |------|------|------|------|
 | Phase 1 | ReAct 循环 + HVAC RAG + DeepSeek V4 + 流式前端 | ✅ 完成 | — |
-| Phase 2 | FastAPI REST API（/invoke + /stream SSE） | 待开始 | `docs/plan_phase2_api.md` |
+| Phase 2 | Action Agent：FastAPI SSE + UIAction 跳转信号 + Java 后端工具 | 待开始 | `docs/plan_phase2_action_agent.md` |
 | Phase 3 | RAG 质量优化（相关度阈值 + 拒答 + 引用来源） | 待开始 | `docs/plan_phase3_rag.md` |
-| Phase 4 | Mock → 真实预测 API（TimeDiT / PhysicsAI / AIDC） | 待开始 | `docs/plan_phase4_realapi.md` |
+| Phase 4 | Mock → 真实预测 API（TimeDiT / PhysicsAI / AIDC）+ Java 后端真实对接 | 待开始 | `docs/plan_phase4_realapi.md` |
 | Phase 5 | 语音助手（Whisper STT + TTS） | 待开始 | `docs/plan_phase5_voice.md` |
 
-**阶段顺序可以调整**，plan 文件相互独立。Phase 4 依赖算法团队 API 就绪，可与 Phase 3 并行。Phase 5 只依赖 Phase 2（API 层）。
+**阶段顺序可以调整**，plan 文件相互独立。Phase 4 依赖算法团队 API 就绪，可与 Phase 3 并行。Phase 5 只依赖 Phase 2（API 层）。  
+**Phase 2 升级说明**: 原 FastAPI 基础规划（`plan_phase2_api.md`）已升级为 Action Agent 模式，新增 UIAction 跳转信号和 Java 后端工具层，原文件保留作参考。
 
 **每个 session 开发流程**:
 ```
@@ -187,6 +189,7 @@ EnerGraph/
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-05-21 | Phase 2 升级为 Action Agent：UIAction 跳转信号 + Java 后端工具层，创建 plan_phase2_action_agent.md | 魏博源 |
 | 2026-05-21 | 规划 Phase 2-5，创建 docs/plan_*.md，精简并重写 AI_CONTEXT | 魏博源 |
 | 2026-05-21 | token 级流式前端（stream_mode=messages），streaming=True | 魏博源 |
 | 2026-05-18 | LLM_PROVIDER 切换、DeepSeek V4 适配、ONNX Embedding | 魏博源 |
@@ -197,4 +200,4 @@ EnerGraph/
 
 ---
 
-**下一步**: 开始 Phase 2 → 读 `docs/plan_phase2_api.md`
+**下一步**: 开始 Phase 2 → 读 `docs/plan_phase2_action_agent.md`
