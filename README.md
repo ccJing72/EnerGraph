@@ -6,6 +6,7 @@
 
 - **HVAC 专家问答**：5613 条暖通空调专业语料（规范查询、能效计算、故障诊断、节能优化），RAG 检索驱动，低置信度自动拒答
 - **Action Agent**：理解自然语言意图 → 调用 Java 后端监控 API → 流式返回文字总结 + 页面跳转信号
+- **Skills 分层架构**：Skills（业务推理层，专属 Prompt + SOP + Tools 编排）与 Tools（原子执行层）分离，防止 Phase 3-5 代码膨胀
 - **ReAct 循环**：cognitive_parser → v3_engine_router（工具执行）→ interpreter_generator（报告生成），token 级流式输出
 - **多 LLM 支持**：DeepSeek V4 / OpenAI / Claude，`LLM_PROVIDER` 环境变量一键切换
 
@@ -53,6 +54,7 @@ EnerGraph/
 ├── config/
 │   └── agent_config.yaml          # 默认配置（.env 优先覆盖）
 ├── docs/                          # 各阶段开发规划
+│   ├── plan_skills_refactor.md    # Skills 架构重组方案
 │   ├── plan_phase2_action_agent.md
 │   ├── plan_phase3_rag.md
 │   ├── plan_phase4_realapi.md
@@ -60,10 +62,15 @@ EnerGraph/
 ├── src/
 │   ├── config/
 │   │   ├── settings.py            # 统一配置加载（LLM_PROVIDER 切换）
-│   │   └── prompts.yaml           # System Prompt 模板（外部化）
+│   │   └── prompts.yaml           # 所有 System Prompt 集中管理
 │   ├── schemas/
 │   │   └── v3_engine.py           # Pydantic 模型（Tool I/O 强类型）
-│   ├── tools/                     # V3 引擎工具（Mock + RAG）
+│   ├── skills/                    # 业务技能层（Prompt + SOP + Tools 编排）
+│   │   ├── hvac_expert_skill.py   # HVAC 专家问答
+│   │   ├── energy_dispatch_skill.py
+│   │   ├── ui_router_skill.py     # 页面跳转控制
+│   │   └── v3_interpreter_skill.py
+│   ├── tools/                     # 原子执行层（确定性函数，不含 Prompt）
 │   ├── graph/                     # LangGraph 状态机
 │   │   ├── state.py               # AgentState TypedDict
 │   │   ├── nodes.py               # 三个节点函数
@@ -109,8 +116,9 @@ EnerGraph/
 详见 [CLAUDE.md](CLAUDE.md)。核心原则：
 
 - Agent **禁止**手写能源计算，所有计算通过 Tools 调用
+- Skills 封装业务推理（Prompt + SOP），Tools 封装原子执行，Graph Nodes 只负责调度
 - `AgentState` 用 `TypedDict + Annotated`，Tool I/O 用 Pydantic BaseModel
-- Prompt 外部化至 `src/config/prompts.yaml`，禁止硬编码
+- Prompt 集中管理至 `src/config/prompts.yaml`，禁止硬编码
 - 每个 `.py` 文件必须有模块 docstring（层 / 依赖 / 对接引擎）
 - 提交格式：`[模块] 动词短语`，禁止 `git add .`
 

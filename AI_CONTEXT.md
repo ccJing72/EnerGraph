@@ -135,12 +135,12 @@ EnerGraph/
     │   └── v3_engine.py       # Pydantic 模型：ConstraintMatrix / TimeDiTForecast /
     │                          #   PhysicsResidual / AIDCCoolingStatus / HVACKnowledgeResult
     ├── skills/                # 业务技能层（Prompt + SOP + Tools 编排）
-│   │   ├── __init__.py        # SKILL_REGISTRY + SKILL_DESCRIPTIONS
-│   │   ├── hvac_expert_skill.py     # HVAC 专家问答（Phase 3 完善）
-│   │   ├── energy_dispatch_skill.py # 能源调度分析（Phase 4 完善）
-│   │   ├── ui_router_skill.py       # 页面跳转控制（Phase 2 完善）
-│   │   └── v3_interpreter_skill.py  # V3 数据解读报告
-│   ├── tools/                 # V3 引擎工具（原子执行层，Mock + RAG）
+    │   ├── __init__.py        # SKILL_REGISTRY + SKILL_DESCRIPTIONS
+    │   ├── hvac_expert_skill.py     # HVAC 专家问答（Phase 3 完善）
+    │   ├── energy_dispatch_skill.py # 能源调度分析（Phase 4 完善）
+    │   ├── ui_router_skill.py       # 页面跳转控制（Phase 2 完善）
+    │   └── v3_interpreter_skill.py  # V3 数据解读报告
+    ├── tools/                 # V3 引擎工具（原子执行层，Mock + RAG）
     │   ├── __init__.py        # TOOL_REGISTRY + TOOL_SCHEMAS（LLM function calling 用）
     │   ├── parse_intent.py    # 意图解析 → ConstraintMatrix
     │   ├── query_timedit.py   # TimeDiT 时序预测（Mock）
@@ -159,10 +159,7 @@ EnerGraph/
     ├── frontend/
     │   └── app.py             # Streamlit 演示前端（token 级流式）
     └── tests/
-        ├── test_tools.py
-        └── test_graph.py
-```
-
+        └── __init__.py        # 测试占位（Phase 2 T6 起填充）
 ---
 
 ## 4. 工具注册表（Tools）与技能注册表（Skills）
