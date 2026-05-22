@@ -44,3 +44,7 @@
 ## 注意
 - 工具签名（函数名、参数、返回类型）**不得改变**，否则 TOOL_SCHEMAS 需同步更新
 - 真实 API 文档由算法团队提供后再开始 T2-T4
+
+## Skills 融合说明
+- T2-T4 各引擎工具替换为真实 HTTP 后，`EnergyDispatchSkill` 无需改动（工具签名不变）
+- 详见 `docs/plan_skills_refactor.md`

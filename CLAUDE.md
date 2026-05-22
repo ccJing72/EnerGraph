@@ -141,6 +141,12 @@ git push origin main
 
 ## 扩展原则
 
+### 新增 Skill（业务技能）
+1. `src/skills/` 下新建文件，文件头注明 SOP 流程、调用的 Tools、Prompt keys
+2. 在 `src/skills/__init__.py` 的 `SKILL_REGISTRY` + `SKILL_DESCRIPTIONS` 注册
+3. Skill 内部只编排 Tools，不直接调用 LLM（LLM 调用在 Graph 节点层）
+4. 更新 `AI_CONTEXT.md` §3 + §4
+
 ### 新增 Tool（V3 引擎 Mock）
 1. `src/tools/` 下新建文件，文件头注明对接的 V3 引擎模块
 2. 在 `src/tools/__init__.py` 的 `TOOL_REGISTRY` + `TOOL_SCHEMAS` 注册

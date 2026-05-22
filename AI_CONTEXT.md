@@ -98,9 +98,20 @@ LLM_PROVIDER=deepseek   # deepseek-v4-pro / deepseek-v4-flash
 
 DeepSeek V4 注意：`thinking` 模式已禁用（`extra_body={"thinking":{"type":"disabled"}}`），避免 tool calling 时 `reasoning_content` 报错。
 
----
+### 2.4 Tools vs Skills 分工
 
-## 3. 目录结构
+```
+Tools（原子执行层）= 确定性函数，强类型 I/O，不含 Prompt
+  → src/tools/：fetch_cop_data, query_hvac_knowledge, navigate_to_page ...
+
+Skills（业务推理层）= 专属 Prompt + SOP 流程 + Tools 编排
+  → src/skills/：HVACExpertSkill, UIRouterSkill, EnergyDispatchSkill ...
+
+Graph Nodes（调度层）= cognitive_parser 识别技能 → Skill 编排 Tools
+  → 节点代码保持精简，不含业务逻辑
+```
+
+
 
 ```
 EnerGraph/
@@ -111,6 +122,7 @@ EnerGraph/
 ├── config/
 │   └── agent_config.yaml      # 默认配置（.env 优先覆盖）
 ├── docs/                      # 各阶段开发 plan（每个 session 只读对应 plan）
+│   ├── plan_skills_refactor.md      # Skills 架构重组方案（跨 Phase 基础设施）
 │   ├── plan_phase2_action_agent.md  # Action Agent：FastAPI SSE + UIAction + Java 工具
 │   ├── plan_phase3_rag.md           # RAG 质量优化
 │   ├── plan_phase4_realapi.md       # 真实 API 对接
@@ -122,7 +134,13 @@ EnerGraph/
     ├── schemas/
     │   └── v3_engine.py       # Pydantic 模型：ConstraintMatrix / TimeDiTForecast /
     │                          #   PhysicsResidual / AIDCCoolingStatus / HVACKnowledgeResult
-    ├── tools/                 # V3 引擎工具（Mock + RAG）
+    ├── skills/                # 业务技能层（Prompt + SOP + Tools 编排）
+│   │   ├── __init__.py        # SKILL_REGISTRY + SKILL_DESCRIPTIONS
+│   │   ├── hvac_expert_skill.py     # HVAC 专家问答（Phase 3 完善）
+│   │   ├── energy_dispatch_skill.py # 能源调度分析（Phase 4 完善）
+│   │   ├── ui_router_skill.py       # 页面跳转控制（Phase 2 完善）
+│   │   └── v3_interpreter_skill.py  # V3 数据解读报告
+│   ├── tools/                 # V3 引擎工具（原子执行层，Mock + RAG）
     │   ├── __init__.py        # TOOL_REGISTRY + TOOL_SCHEMAS（LLM function calling 用）
     │   ├── parse_intent.py    # 意图解析 → ConstraintMatrix
     │   ├── query_timedit.py   # TimeDiT 时序预测（Mock）
@@ -147,7 +165,9 @@ EnerGraph/
 
 ---
 
-## 4. 工具注册表
+## 4. 工具注册表（Tools）与技能注册表（Skills）
+
+### 4.1 Tools — 原子执行层
 
 | 工具名 | 状态 | 对接引擎 | 输出模型 |
 |--------|------|----------|----------|
@@ -156,6 +176,19 @@ EnerGraph/
 | `verify_physics_consistency` | Mock | PhysicsAI | `PhysicsResidual` |
 | `fetch_aidc_cooling_status` | Mock | AIDC 智算中心 | `AIDCCoolingStatus` |
 | `query_hvac_knowledge` | **真实** | ChromaDB RAG | `HVACKnowledgeResult` |
+| `navigate_to_page` | 待实现 | N/A（状态变更） | `UIAction`（Phase 2） |
+| `fetch_cop_data` | 待实现 | Java 后端 | `COPData`（Phase 2） |
+| `fetch_energy_summary` | 待实现 | Java 后端 | `EnergySummary`（Phase 2） |
+| `fetch_active_alarms` | 待实现 | Java 后端 | `AlarmList`（Phase 2） |
+
+### 4.2 Skills — 业务推理层
+
+| 技能名 | 状态 | 调用 Tools | 完善阶段 |
+|--------|------|-----------|---------|
+| `ui_router` | 骨架 | navigate_to_page, fetch_cop/energy/alarms | Phase 2 |
+| `hvac_expert` | 骨架 | query_hvac_knowledge | Phase 3 |
+| `energy_dispatch` | 骨架 | parse_intent, timedit, physics, aidc | Phase 4 |
+| `v3_interpreter` | 骨架 | 无（纯 LLM） | Phase 2-4 逐步迁移 |
 
 **HVAC 知识库**: 5613 条语料，覆盖规范查询、能效计算、故障诊断、节能优化，含地铁站/商业项目专项。
 
@@ -187,6 +220,7 @@ EnerGraph/
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-05-22 | Skills 架构重组：建立 src/skills/ 骨架（4个Skill），更新 CLAUDE.md/AI_CONTEXT.md，新增 plan_skills_refactor.md | 魏博源 |
 | 2026-05-21 | 工程规范升级：Prompt 强制集中管理 + 版本控制（CLAUDE.md/AI_CONTEXT.md 同步更新） | 魏博源 |
 | 2026-05-21 | Phase 2 升级为 Action Agent：UIAction 跳转信号 + Java 后端工具层，创建 plan_phase2_action_agent.md | 魏博源 |
 | 2026-05-21 | 规划 Phase 2-5，创建 docs/plan_*.md，精简并重写 AI_CONTEXT | 魏博源 |

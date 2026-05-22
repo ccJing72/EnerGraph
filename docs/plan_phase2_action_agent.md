@@ -157,6 +157,12 @@ pip install fastapi uvicorn[standard] httpx
 - `src/tools/java_backend.py` — Java 后端工具（Mock fallback）
 - `src/graph/state.py` — AgentState 扩展
 
+## Skills 融合说明
+- T1 完成后同步建立 `src/skills/` 骨架（已完成）
+- T2 导航工具的业务逻辑实现在 `src/skills/ui_router_skill.py`，不写入 nodes.py
+- T3 Java 工具注册后，`UIRouterSkill.tools` 列表已预置，无需改 Skill 文件
+- 详见 `docs/plan_skills_refactor.md`
+
 ## 前端对接说明
 - 推荐使用 `@microsoft/fetch-event-source` 库（支持 POST + SSE）
 - 监听 `event: action` 后调用 `router.push(data.route, { query: data.params })`

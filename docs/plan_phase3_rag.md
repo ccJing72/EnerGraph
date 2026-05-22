@@ -37,5 +37,10 @@
 
 ## 关键文件
 - `src/tools/query_hvac_knowledge.py` — 检索逻辑
-- `src/config/prompts.yaml` — interpreter_generator system prompt
+- `src/skills/hvac_expert_skill.py` — 置信度判断/拒答/引用来源 SOP（本 Phase 完善）
+- `src/config/prompts.yaml` — hvac_refusal / hvac_citation_format（本 Phase 新增）
 - `data/hvac_knowledge/` — ChromaDB 向量库（已入库 5613 条）
+
+## Skills 融合说明
+- T1-T3 的置信度/拒答/引用逻辑实现在 `src/skills/hvac_expert_skill.py`，不写入 nodes.py
+- 详见 `docs/plan_skills_refactor.md`

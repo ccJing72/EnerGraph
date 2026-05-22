@@ -45,3 +45,7 @@
 pip install openai  # Whisper STT + TTS（或替换为本地模型）
 pip install streamlit-audiorecorder
 ```
+
+## Skills 融合说明
+- T1-T2 语音端点实现后，新增 `src/skills/voice_skill.py`（完全独立，不影响其他 Skill）
+- 详见 `docs/plan_skills_refactor.md`
