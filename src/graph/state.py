@@ -4,6 +4,7 @@
 依赖：langgraph, langchain_core
 对接 V3 引擎：N/A
 """
+import operator
 from typing import Annotated, List, Optional
 from typing_extensions import TypedDict
 from langchain_core.messages import BaseMessage
@@ -16,6 +17,7 @@ from src.schemas.v3_engine import (
     PhysicsResidual,
     TimeDiTForecast,
 )
+from src.schemas.action_agent import PageContext, UIAction
 
 
 class AgentState(TypedDict, total=False):
@@ -40,6 +42,10 @@ class AgentState(TypedDict, total=False):
 
     # RAG 预留
     context: Optional[str]
+
+    # Action Agent（Phase 2）
+    page_context: Optional[PageContext]
+    pending_actions: Annotated[List[UIAction], operator.add]
 
     # 输出
     final_report: str

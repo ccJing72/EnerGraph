@@ -71,17 +71,21 @@ EnerGraph/
 │   │   ├── ui_router_skill.py     # 页面跳转控制
 │   │   └── v3_interpreter_skill.py
 │   ├── tools/                     # 原子执行层（确定性函数，不含 Prompt）
+│   │   ├── navigate_to_page.py    # 页面跳转 → UIAction
+│   │   └── java_backend.py        # Java 后端工具 Mock（COP/能耗/报警）
 │   ├── graph/                     # LangGraph 状态机
 │   │   ├── state.py               # AgentState TypedDict
 │   │   ├── nodes.py               # 三个节点函数
 │   │   ├── edges.py               # 条件路由
 │   │   └── builder.py             # graph 全局单例
 │   ├── services/
-│   │   └── api.py                 # FastAPI（Phase 2 实现中）
+│   │   └── api.py                 # FastAPI SSE（/invoke + /stream）
 │   ├── pipelines/
 │   │   └── rag_ingest.py          # HVAC 语料入库
-│   └── frontend/
-│       └── app.py                 # Streamlit 演示前端
+│   ├── frontend/
+│   │   └── app.py                 # Streamlit 演示前端
+│   └── tests/
+│       └── test_action_agent.py   # /stream 集成测试
 ├── data/hvac_knowledge/           # ChromaDB 向量库（rag_ingest 后生成）
 ├── CLAUDE.md                      # AI 协作规范（每次 session 自动加载）
 └── AI_CONTEXT.md                  # 项目单点真相
@@ -106,7 +110,7 @@ EnerGraph/
 | 阶段 | 内容 | 状态 |
 |------|------|------|
 | Phase 1 | ReAct 循环 + HVAC RAG + DeepSeek V4 + 流式前端 | ✅ 完成 |
-| Phase 2 | Action Agent：FastAPI SSE + UIAction 跳转信号 + Java 后端工具 | 进行中 |
+| Phase 2 | Action Agent：FastAPI SSE + UIAction 跳转信号 + Java 后端工具 | ✅ 完成 |
 | Phase 3 | RAG 质量优化（置信度阈值 + 拒答 + 引用来源） | 待开始 |
 | Phase 4 | Mock → 真实预测 API（TimeDiT / PhysicsAI / AIDC） | 待开始 |
 | Phase 5 | 语音助手（Whisper STT + TTS） | 待开始 |

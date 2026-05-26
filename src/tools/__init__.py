@@ -11,6 +11,8 @@ from src.tools.query_timedit import query_timedit_forecast
 from src.tools.verify_physics import verify_physics_consistency
 from src.tools.fetch_aidc_cooling import fetch_aidc_cooling_status
 from src.tools.query_hvac_knowledge import query_hvac_knowledge
+from src.tools.java_backend import fetch_cop_data, fetch_energy_summary, fetch_active_alarms
+from src.tools.navigate_to_page import navigate_to_page
 
 TOOL_REGISTRY: Dict[str, Callable[..., Dict[str, Any]]] = {
     "parse_business_intent": parse_business_intent,
@@ -18,6 +20,10 @@ TOOL_REGISTRY: Dict[str, Callable[..., Dict[str, Any]]] = {
     "verify_physics_consistency": verify_physics_consistency,
     "fetch_aidc_cooling_status": fetch_aidc_cooling_status,
     "query_hvac_knowledge": query_hvac_knowledge,
+    "fetch_cop_data": fetch_cop_data,
+    "fetch_energy_summary": fetch_energy_summary,
+    "fetch_active_alarms": fetch_active_alarms,
+    "navigate_to_page": navigate_to_page,
 }
 
 TOOL_SCHEMAS = [
@@ -74,6 +80,59 @@ TOOL_SCHEMAS = [
                 "question": {"type": "string", "description": "用户的暖通空调相关问题"},
             },
             "required": ["question"],
+        },
+    },
+    {
+        "name": "fetch_cop_data",
+        "description": "获取冷水机组的实时 COP（能效比）数据，包括瞬时 COP、累计 COP、进出水温度、实时功率等",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "site_id": {"type": "string", "description": "站点 ID，如 SH-01"},
+                "chiller_id": {"type": "string", "description": "冷水机组编号，默认 CH-01"},
+            },
+            "required": ["site_id"],
+        },
+    },
+    {
+        "name": "fetch_energy_summary",
+        "description": "获取站点单日能耗汇总数据，包括总用电量、光伏发电、电网取电、储能充放电、碳减排等",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "site_id": {"type": "string", "description": "站点 ID，如 SH-01"},
+                "date": {"type": "string", "description": "统计日期，格式 YYYY-MM-DD"},
+            },
+            "required": ["site_id", "date"],
+        },
+    },
+    {
+        "name": "fetch_active_alarms",
+        "description": "获取站点当前活跃报警列表，包括报警级别、设备、报警信息和时间",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "site_id": {"type": "string", "description": "站点 ID，如 SH-01"},
+            },
+            "required": ["site_id"],
+        },
+    },
+    {
+        "name": "navigate_to_page",
+        "description": "下发页面跳转信号，将用户导航到指定监控页面。在获取监控数据后，根据数据类型跳转到对应的详情页面",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "route": {
+                    "type": "string",
+                    "description": "目标路由。可用路由：/ (首页), /chiller-room (冷水机房), /energy-monitor (能耗监测), /pv-storage (光储协同), /alarms (报警列表), /settings (系统设置)",
+                },
+                "params": {
+                    "type": "object",
+                    "description": "路由参数，如 {\"site_id\": \"SH-01\", \"chiller_id\": \"CH-01\"}",
+                },
+            },
+            "required": ["route"],
         },
     },
 ]

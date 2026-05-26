@@ -66,7 +66,7 @@ es.addEventListener('done', () => es.close())
 | 文件 | 改动 |
 |------|------|
 | `src/graph/state.py` | 新增 `page_context: Optional[PageContext]`、`pending_actions: Annotated[List[UIAction], operator.add]` |
-| `src/graph/nodes.py` | `v3_engine_router` 中为 `navigate_to_page` 工具添加 list-append 分支 |
+| `src/graph/nodes.py` | `v3_engine_router` 添加 Skill 调度分发（调用 UIRouterSkill），不写业务逻辑 |
 | `src/tools/__init__.py` | 注册 `navigate_to_page` + 3 个 Java 工具 |
 | `src/config/prompts.yaml` | 新增 `action_agent_nav_hint`：告知 LLM 可用路由表和何时调用跳转工具 |
 | `src/services/api.py` | 实现 FastAPI app（当前为空占位） |
@@ -82,14 +82,15 @@ es.addEventListener('done', () => es.close())
   - `state.py` 新增 `page_context` 和 `pending_actions` 字段
 - **验收**: `python -c "from src.schemas.action_agent import UIAction; print(UIAction(type='navigate', route='/test', params={}))"` 无报错
 
-### T2: 导航工具 + Prompt
-- **文件**: `src/tools/navigate_to_page.py`, `src/tools/__init__.py`, `src/config/prompts.yaml`
+### T2: 导航工具 + Prompt（遵循 Skills 架构）
+- **文件**: `src/tools/navigate_to_page.py`, `src/tools/__init__.py`, `src/skills/ui_router_skill.py`, `src/config/prompts.yaml`
 - **改动**:
   - 新建 `navigate_to_page(route, params)` 工具，返回 `UIAction` dict
   - 注册到 `TOOL_REGISTRY` + `TOOL_SCHEMAS`
-  - `nodes.py` 中 `v3_engine_router` 添加 `navigate_to_page` → `pending_actions` append 逻辑
-  - `prompts.yaml` 新增路由表提示（`/chiller-room`, `/energy-monitor`, `/pv-storage` 等）
-- **验收**: 单元测试验证工具调用后 `pending_actions` 有一条 UIAction
+  - 完善 `ui_router_skill.py`：实现 SOP（识别查询意图 → Java 工具取数 → 文字总结 → UIAction 跳转信号），将 `navigate_to_page` 作为该 Skill 的编排工具
+  - `v3_engine_router` 仅添加 Skill 调度分发（调用 Skill.execute），**不写业务逻辑**
+  - `prompts.yaml` 新增 `action_agent_nav_hint`（路由表提示：`/chiller-room`, `/energy-monitor`, `/pv-storage` 等）
+- **验收**: 单元测试验证 `navigate_to_page` 工具调用后 `pending_actions` 有一条 UIAction
 
 ### T3: Java 后端工具（Mock fallback）
 - **文件**: `src/tools/java_backend.py`, `src/tools/__init__.py`

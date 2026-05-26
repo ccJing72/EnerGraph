@@ -1,8 +1,8 @@
 # 青山 V3 多模态调度 Agent — 项目上下文
 
 ## 项目状态
-**当前阶段**: Phase 1 完成 ✅ | Phase 2 待开始  
-**最后更新**: 2026-05-21  
+**当前阶段**: Phase 1 完成 ✅ | Phase 2 完成 ✅（T1-T6 全部完成）  
+**最后更新**: 2026-05-26  
 **项目性质**: 企业级落地方案，南京福加智能科技有限公司内部项目  
 **GitHub**: https://github.com/Webr1ng/EnerGraph.git  
 **GitLab**: git@172.16.3.160:ai-group/energraph.git  
@@ -132,8 +132,9 @@ EnerGraph/
     │   ├── settings.py        # 配置加载（LLM_PROVIDER / DEEPSEEK_MODEL 等）
     │   └── prompts.yaml       # 【唯一入口】所有 System Prompt 集中管理 + 版本控制
     ├── schemas/
-    │   └── v3_engine.py       # Pydantic 模型：ConstraintMatrix / TimeDiTForecast /
-    │                          #   PhysicsResidual / AIDCCoolingStatus / HVACKnowledgeResult
+    │   ├── v3_engine.py       # Pydantic 模型：ConstraintMatrix / TimeDiTForecast /
+    │   │                      #   PhysicsResidual / AIDCCoolingStatus / HVACKnowledgeResult
+    │   └── action_agent.py    # PageContext / ActionAgentInput / UIAction（Phase 2）
     ├── skills/                # 业务技能层（Prompt + SOP + Tools 编排）
     │   ├── __init__.py        # SKILL_REGISTRY + SKILL_DESCRIPTIONS
     │   ├── hvac_expert_skill.py     # HVAC 专家问答（Phase 3 完善）
@@ -146,20 +147,24 @@ EnerGraph/
     │   ├── query_timedit.py   # TimeDiT 时序预测（Mock）
     │   ├── verify_physics.py  # PhysicsAI 物理验证（Mock）
     │   ├── fetch_aidc_cooling.py # AIDC 液冷状态（Mock）
-    │   └── query_hvac_knowledge.py # HVAC RAG 检索（真实，ChromaDB）
+    │   ├── query_hvac_knowledge.py # HVAC RAG 检索（真实，ChromaDB）
+    │   ├── navigate_to_page.py   # 页面跳转 → UIAction（Phase 2）
+    │   └── java_backend.py       # Java 后端工具：COP/能耗/报警 Mock（Phase 2）
     ├── graph/
-    │   ├── state.py           # AgentState（TypedDict + Annotated add_messages）
-    │   ├── nodes.py           # 三个节点函数
+    │   ├── state.py           # AgentState（TypedDict + Annotated，含 page_context/pending_actions）
+    │   ├── nodes.py           # 三个节点函数（v3_engine_router 含 Skill 调度分发）
     │   ├── edges.py           # should_continue 条件路由
     │   └── builder.py         # 图编译，graph 全局单例
     ├── pipelines/
-    │   └── rag_ingest.py      # HVAC 语料入库（5613 条，ONNX Embedding）
+    │   ├── rag_ingest.py      # HVAC 语料入库（5613 条，ONNX Embedding）
+    │   └── sft_export.py      # SFT 数据清洗导出占位
     ├── services/
-    │   └── api.py             # 【Phase 2】FastAPI 占位
+    │   └── api.py             # FastAPI：GET /health + POST /invoke + POST /stream (SSE)
     ├── frontend/
     │   └── app.py             # Streamlit 演示前端（token 级流式）
     └── tests/
-        └── __init__.py        # 测试占位（Phase 2 T6 起填充）
+        ├── __init__.py        # 测试包初始化
+        └── test_action_agent.py  # /stream 端点集成测试（Phase 2 T6）
 ---
 
 ## 4. 工具注册表（Tools）与技能注册表（Skills）
@@ -173,16 +178,16 @@ EnerGraph/
 | `verify_physics_consistency` | Mock | PhysicsAI | `PhysicsResidual` |
 | `fetch_aidc_cooling_status` | Mock | AIDC 智算中心 | `AIDCCoolingStatus` |
 | `query_hvac_knowledge` | **真实** | ChromaDB RAG | `HVACKnowledgeResult` |
-| `navigate_to_page` | 待实现 | N/A（状态变更） | `UIAction`（Phase 2） |
-| `fetch_cop_data` | 待实现 | Java 后端 | `COPData`（Phase 2） |
-| `fetch_energy_summary` | 待实现 | Java 后端 | `EnergySummary`（Phase 2） |
-| `fetch_active_alarms` | 待实现 | Java 后端 | `AlarmList`（Phase 2） |
+| `navigate_to_page` | ✅ 已实现 | N/A（状态变更） | `UIAction`（Phase 2） |
+| `fetch_cop_data` | Mock | Java 后端 | `COPData`（Phase 2） |
+| `fetch_energy_summary` | Mock | Java 后端 | `EnergySummary`（Phase 2） |
+| `fetch_active_alarms` | Mock | Java 后端 | `AlarmList`（Phase 2） |
 
 ### 4.2 Skills — 业务推理层
 
 | 技能名 | 状态 | 调用 Tools | 完善阶段 |
 |--------|------|-----------|---------|
-| `ui_router` | 骨架 | navigate_to_page, fetch_cop/energy/alarms | Phase 2 |
+| `ui_router` | ✅ SOP 已实现 | navigate_to_page, fetch_cop/energy/alarms | Phase 2 |
 | `hvac_expert` | 骨架 | query_hvac_knowledge | Phase 3 |
 | `energy_dispatch` | 骨架 | parse_intent, timedit, physics, aidc | Phase 4 |
 | `v3_interpreter` | 骨架 | 无（纯 LLM） | Phase 2-4 逐步迁移 |
@@ -196,7 +201,7 @@ EnerGraph/
 | 阶段 | 内容 | 状态 | Plan |
 |------|------|------|------|
 | Phase 1 | ReAct 循环 + HVAC RAG + DeepSeek V4 + 流式前端 | ✅ 完成 | — |
-| Phase 2 | Action Agent：FastAPI SSE + UIAction 跳转信号 + Java 后端工具 | 待开始 | `docs/plan_phase2_action_agent.md` |
+| Phase 2 | Action Agent：FastAPI SSE + UIAction 跳转信号 + Java 后端工具 | ✅ 完成 | `docs/plan_phase2_action_agent.md` |
 | Phase 3 | RAG 质量优化（相关度阈值 + 拒答 + 引用来源） | 待开始 | `docs/plan_phase3_rag.md` |
 | Phase 4 | Mock → 真实预测 API（TimeDiT / PhysicsAI / AIDC）+ Java 后端真实对接 | 待开始 | `docs/plan_phase4_realapi.md` |
 | Phase 5 | 语音助手（Whisper STT + TTS） | 待开始 | `docs/plan_phase5_voice.md` |
@@ -217,6 +222,12 @@ EnerGraph/
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-05-26 | Phase 2 T6：page_context 注入 cognitive_parser system prompt（current_route + site_id），新建 test_action_agent.py 集成测试（2 passed） | 魏博源 |
+| 2026-05-26 | Phase 2 T2（重构）：导航工具 navigate_to_page + UIRouterSkill.infer_navigation SOP，v3_engine_router 改为 Skill 调度分发（不写业务逻辑），prompts.yaml 新增 action_agent_nav_hint 路由表 | 魏博源 |
+| 2026-05-26 | Phase 2 T3：Java 后端工具（fetch_cop_data/energy_summary/active_alarms），Mock fallback，注册到 TOOL_REGISTRY | 魏博源 |
+| 2026-05-26 | Phase 2 T5：POST /stream SSE 端点，astream_events 推送 text/action/done 事件 | 魏博源 |
+| 2026-05-26 | Phase 2 T4：FastAPI 骨架 + /invoke 端点，接收 ActionAgentInput，同步运行 graph 返回 report + actions | 魏博源 |
+| 2026-05-26 | Phase 2 T1：新建 action_agent.py（PageContext/ActionAgentInput/UIAction），AgentState 扩展 page_context + pending_actions | 魏博源 |
 | 2026-05-22 | Skills 架构重组：建立 src/skills/ 骨架（4个Skill），更新 CLAUDE.md/AI_CONTEXT.md，新增 plan_skills_refactor.md | 魏博源 |
 | 2026-05-21 | 工程规范升级：Prompt 强制集中管理 + 版本控制（CLAUDE.md/AI_CONTEXT.md 同步更新） | 魏博源 |
 | 2026-05-21 | Phase 2 升级为 Action Agent：UIAction 跳转信号 + Java 后端工具层，创建 plan_phase2_action_agent.md | 魏博源 |
@@ -230,4 +241,4 @@ EnerGraph/
 
 ---
 
-**下一步**: 开始 Phase 2 → 读 `docs/plan_phase2_action_agent.md`
+**下一步**: 开始 Phase 3 → 读 `docs/plan_phase3_rag.md`

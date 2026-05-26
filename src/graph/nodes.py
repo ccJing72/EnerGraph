@@ -63,6 +63,17 @@ def cognitive_parser_node(state: AgentState) -> Dict[str, Any]:
     if not messages:
         prompts = _load_prompts()
         system_content = prompts.get("cognitive_parser", {}).get("system", "")
+
+        page_context = state.get("page_context")
+        if page_context is not None:
+            if hasattr(page_context, "current_route"):
+                route = page_context.current_route
+                site_id = page_context.site_id
+            else:
+                route = page_context.get("current_route", "/")
+                site_id = page_context.get("site_id")
+            system_content += f"\n\n## 当前页面上下文\n- 当前路由：{route}\n- 站点 ID：{site_id or '未指定'}"
+
         messages = [
             SystemMessage(content=system_content),
             HumanMessage(content=state.get("user_input", "")),
@@ -85,6 +96,7 @@ def v3_engine_router_node(state: AgentState) -> Dict[str, Any]:
     last: AIMessage = messages[-1]
 
     tool_messages = []
+    tool_results: list = []  # [(name, result, args), ...] 供 Skill 调度使用
     updates: Dict[str, Any] = {}
 
     for tool_call in last.tool_calls:
@@ -99,6 +111,8 @@ def v3_engine_router_node(state: AgentState) -> Dict[str, Any]:
             except Exception as e:
                 logger.error(f"工具 {name} 执行失败: {e}")
                 result = {"error": str(e)}
+
+        tool_results.append((name, result, args))
 
         # 将结果写入对应 state 字段
         _field_map = {
@@ -117,6 +131,12 @@ def v3_engine_router_node(state: AgentState) -> Dict[str, Any]:
                 tool_call_id=tool_call["id"],
             )
         )
+
+    # Skill 调度：UIRouterSkill 根据本轮工具调用生成 UIAction
+    from src.skills.ui_router_skill import UIRouterSkill
+    action = UIRouterSkill.infer_navigation(tool_results)
+    if action is not None:
+        updates["pending_actions"] = [action]
 
     return {"messages": tool_messages, **updates}
 
