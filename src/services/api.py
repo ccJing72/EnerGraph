@@ -26,17 +26,30 @@ app = FastAPI(
 
 
 @app.get("/health")
-async def health():
-    """健康检查端点。"""
+async def health() -> dict:
+    """健康检查端点。
+
+    Returns:
+        包含 status 字段的状态字典
+    """
     return {"status": "ok"}
 
 
 @app.post("/invoke")
-async def invoke(input_data: ActionAgentInput):
+async def invoke(input_data: ActionAgentInput) -> JSONResponse:
     """同步运行 Agent，返回最终报告和 UI 动作列表。
 
     接收用户输入和可选页面上下文，经过完整的 ReAct 循环后，
     返回 LLM 生成的 Markdown 报告和所有待执行的 UI 动作。
+
+    Args:
+        input_data: 包含 user_input 和可选 page_context 的请求体
+
+    Returns:
+        JSONResponse，body 含 report(str) 和 actions(List[dict])
+
+    Raises:
+        HTTPException: Agent 执行失败时返回 500
     """
     initial_state: dict = {"user_input": input_data.user_input}
     if input_data.page_context is not None:
@@ -71,6 +84,14 @@ async def invoke(input_data: ActionAgentInput):
 
 
 async def _sse_generator(input_data: ActionAgentInput) -> AsyncIterator[str]:
+    """SSE 流式推送生成器：逐 token 推送 text/intent_plan/action/done 事件。
+
+    Args:
+        input_data: 包含 user_input 和可选 page_context 的请求体
+
+    Yields:
+        SSE 格式字符串（event: text/action/intent_plan/done/error）
+    """
     initial_state: dict = {"user_input": input_data.user_input}
     if input_data.page_context is not None:
         initial_state["page_context"] = input_data.page_context
@@ -111,6 +132,13 @@ async def _sse_generator(input_data: ActionAgentInput) -> AsyncIterator[str]:
 
 
 @app.post("/stream")
-async def stream(input_data: ActionAgentInput):
-    """流式运行 Agent，以 SSE 格式推送 text / intent_plan / action / done 事件。"""
+async def stream(input_data: ActionAgentInput) -> StreamingResponse:
+    """流式运行 Agent，以 SSE 格式推送 text / intent_plan / action / done 事件。
+
+    Args:
+        input_data: 包含 user_input 和可选 page_context 的请求体
+
+    Returns:
+        StreamingResponse（media_type=text/event-stream）
+    """
     return StreamingResponse(_sse_generator(input_data), media_type="text/event-stream")

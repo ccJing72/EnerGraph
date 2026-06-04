@@ -99,5 +99,78 @@ def ingest(jsonl_path: str = str(JSONL_PATH), db_path: str = DB_PATH) -> int:
     return total
 
 
+def append_supplement(
+    supplement_path: str = None, db_path: str = DB_PATH
+) -> int:
+    """将补充 QA 语料追加到现有 ChromaDB 集合（不重建，只追加）。
+
+    Args:
+        supplement_path: 补充 JSONL 文件路径，默认 data/supplement_qa.jsonl
+        db_path: ChromaDB 持久化目录
+
+    Returns:
+        新增条目数
+    """
+    import chromadb
+
+    if supplement_path is None:
+        supplement_path = str(
+            Path(__file__).resolve().parents[2] / "data" / "supplement_qa.jsonl"
+        )
+
+    if not Path(supplement_path).exists():
+        raise FileNotFoundError(f"补充语料文件不存在: {supplement_path}")
+
+    try:
+        from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
+        ef = ONNXMiniLM_L6_V2(preferred_providers=["CPUExecutionProvider"])
+    except ImportError:
+        from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+        ef = SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
+
+    client = chromadb.PersistentClient(path=db_path)
+    col = client.get_collection(COLLECTION_NAME, embedding_function=ef)
+    existing_count = col.count()
+
+    docs, metas, ids = [], [], []
+    added = 0
+    with open(supplement_path, encoding="utf-8") as f:
+        for i, line in enumerate(f):
+            try:
+                d = json.loads(line)
+                msgs = d["messages"]
+                question = msgs[1]["content"]
+                answer = msgs[2]["content"]
+                system = msgs[0]["content"]
+            except (json.JSONDecodeError, KeyError, IndexError):
+                continue
+
+            doc_id = f"supplement_{i}"
+            docs.append(f"问题：{question}\n回答：{answer}")
+            metas.append(
+                {
+                    "system_type": "platform_knowledge",
+                    "system": system[:100],
+                    "source": "supplement_qa",
+                }
+            )
+            ids.append(doc_id)
+            added += 1
+
+    if docs:
+        col.add(documents=docs, metadatas=metas, ids=ids)
+
+    new_total = col.count()
+    print(
+        f"[rag_ingest] 补充入库完成：新增 {added} 条，"
+        f"集合从 {existing_count} → {new_total} 条"
+    )
+    return added
+
+
 if __name__ == "__main__":
-    ingest()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--append":
+        append_supplement()
+    else:
+        ingest()

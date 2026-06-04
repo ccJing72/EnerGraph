@@ -55,7 +55,15 @@ def _load_prompts() -> Dict[str, Any]:
     return _prompts
 
 
-def _get_llm(bind_tools: bool = False):
+def _get_llm(bind_tools: bool = False) -> Any:
+    """创建 LLM 实例，根据 LLM_PROVIDER 选择供应商。
+
+    Args:
+        bind_tools: 是否绑定 TOOL_SCHEMAS（function calling 用）
+
+    Returns:
+        ChatOpenAI / ChatAnthropic 实例（可选绑定 tools）
+    """
     import os
 
     provider = os.getenv("LLM_PROVIDER", settings.model.provider).lower()
@@ -83,7 +91,14 @@ def _get_llm(bind_tools: bool = False):
 
 
 def cognitive_parser_node(state: AgentState) -> Dict[str, Any]:
-    """意图解析节点：分析用户输入，决定调用哪些 V3 引擎工具。"""
+    """意图解析节点：分析用户输入，决定调用哪些 V3 引擎工具。
+
+    Args:
+        state: 当前 AgentState
+
+    Returns:
+        AgentState 更新字典（messages, 可选 intent_plan / error）
+    """
     messages = state.get("messages", [])
     if not messages:
         prompts = _load_prompts()
@@ -132,7 +147,14 @@ def cognitive_parser_node(state: AgentState) -> Dict[str, Any]:
 
 
 def v3_engine_router_node(state: AgentState) -> Dict[str, Any]:
-    """引擎调度节点：执行 LLM 选择的 V3 工具，收集物理数据。"""
+    """引擎调度节点：执行 LLM 选择的 V3 工具，通过 BaseSkill 统一调度。
+
+    Args:
+        state: 当前 AgentState
+
+    Returns:
+        AgentState 更新字典（messages + 工具结果字段 + Skill 更新字段）
+    """
     messages = state.get("messages", [])
     last: AIMessage = messages[-1]
 
@@ -181,7 +203,14 @@ def v3_engine_router_node(state: AgentState) -> Dict[str, Any]:
 
 
 def interpreter_generator_node(state: AgentState) -> Dict[str, Any]:
-    """报告生成节点：将物理数据转化为多维 Markdown 解释报告。"""
+    """报告生成节点：将物理数据转化为多维 Markdown 解释报告。
+
+    Args:
+        state: 当前 AgentState
+
+    Returns:
+        AgentState 更新字典（final_report, 可选 error）
+    """
     messages = state.get("messages", [])
     last = messages[-1] if messages else None
 

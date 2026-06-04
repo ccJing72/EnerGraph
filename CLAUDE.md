@@ -39,7 +39,7 @@
 ```python
 """<模块名> — <一句话说明职责>
 
-所属层：<config / schemas / tools / graph / frontend / utils / pipelines>
+所属层：<config / schemas / tools / graph / frontend / utils / pipelines / skills / services / memory / tests>
 依赖：<列出主要依赖>
 对接 V3 引擎：<PhysicsAI / TimeDiT / AIDC_Cooling，若无则填 N/A>
 """
