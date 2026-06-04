@@ -14,6 +14,7 @@ from langchain_core.messages import AIMessageChunk
 
 from src.graph.builder import graph
 from src.schemas.action_agent import ActionAgentInput, UIAction
+from src.schemas.v3_engine import IntentItem
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +87,17 @@ async def _sse_generator(input_data: ActionAgentInput) -> AsyncIterator[str]:
             elif kind == "on_chain_end":
                 output = event.get("data", {}).get("output", {})
                 if isinstance(output, dict):
+                    # Phase 7: intent_plan 事件
+                    intent_plan = output.get("intent_plan")
+                    if intent_plan:
+                        intents_payload = [
+                            i.model_dump() if isinstance(i, IntentItem)
+                            else (i if isinstance(i, dict) else {"id": 0, "description": str(i)})
+                            for i in intent_plan
+                        ]
+                        yield f"event: intent_plan\ndata: {json.dumps({'intents': intents_payload}, ensure_ascii=False)}\n\n"
+
+                    # action 事件
                     actions = output.get("pending_actions", [])
                     for action in actions:
                         payload = action.model_dump() if isinstance(action, UIAction) else action
@@ -100,5 +112,5 @@ async def _sse_generator(input_data: ActionAgentInput) -> AsyncIterator[str]:
 
 @app.post("/stream")
 async def stream(input_data: ActionAgentInput):
-    """流式运行 Agent，以 SSE 格式推送 text / action / done 事件。"""
+    """流式运行 Agent，以 SSE 格式推送 text / intent_plan / action / done 事件。"""
     return StreamingResponse(_sse_generator(input_data), media_type="text/event-stream")

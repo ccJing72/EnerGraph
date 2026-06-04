@@ -1,8 +1,8 @@
 # 青山 V3 多模态调度 Agent — 项目上下文
 
 ## 项目状态
-**当前阶段**: Phase 1 完成 ✅ | Phase 2 完成 ✅（T1-T6 全部完成）  
-**最后更新**: 2026-05-26  
+**当前阶段**: Phase 1 完成 ✅ | Phase 2 完成 ✅ | Phase 3 完成 ✅ | Phase 7 完成 ✅  
+**最后更新**: 2026-06-04  
 **项目性质**: 企业级落地方案，南京福加智能科技有限公司内部项目  
 **GitHub**: https://github.com/Webr1ng/EnerGraph.git  
 **GitLab**: git@172.16.3.160:ai-group/energraph.git  
@@ -40,6 +40,10 @@ Phase 3: RAG 质量优化，减少幻觉
 Phase 4: 接入真实预测算法（TimeDiT 负荷预测、PhysicsAI 物理验证、AIDC 液冷）
       ↓
 Phase 5: 语音助手（语音输入 + 语音输出）
+      ↓
+Phase 6: 数据可视化 + 报表导出（表格/图表/CSV 下载）
+      ↓
+Phase 7: 多意图识别与拆分执行（单输入多意图拆分 + 分段报告）
       ↓
 长期: 多站点管理（福加本厂 → 各厂区 / 地铁站 / 商业建筑）
 ```
@@ -123,23 +127,27 @@ EnerGraph/
 │   └── agent_config.yaml      # 默认配置（.env 优先覆盖）
 ├── docs/                      # 各阶段开发 plan（每个 session 只读对应 plan）
 │   ├── plan_skills_refactor.md      # Skills 架构重组方案（跨 Phase 基础设施）
+│   ├── plan_skills_base_class.md    # Skills 基类升级（BaseSkill + 生命周期管理）
 │   ├── plan_phase2_action_agent.md  # Action Agent：FastAPI SSE + UIAction + Java 工具
 │   ├── plan_phase3_rag.md           # RAG 质量优化
 │   ├── plan_phase4_realapi.md       # 真实 API 对接
-│   └── plan_phase5_voice.md         # 语音助手
+│   ├── plan_phase5_voice.md         # 语音助手
+│   ├── plan_phase6_visualization_export.md  # 数据可视化 + 报表导出
+│   └── plan_phase7_multi_intent.md         # 多意图识别与拆分执行
 └── src/
     ├── config/
     │   ├── settings.py        # 配置加载（LLM_PROVIDER / DEEPSEEK_MODEL 等）
     │   └── prompts.yaml       # 【唯一入口】所有 System Prompt 集中管理 + 版本控制
     ├── schemas/
     │   ├── v3_engine.py       # Pydantic 模型：ConstraintMatrix / TimeDiTForecast /
-    │   │                      #   PhysicsResidual / AIDCCoolingStatus / HVACKnowledgeResult
+    │   │                      #   PhysicsResidual / AIDCCoolingStatus / HVACKnowledgeResult /
+    │   │                      #   IntentItem（Phase 7）
     │   └── action_agent.py    # PageContext / ActionAgentInput / UIAction（Phase 2）
     ├── skills/                # 业务技能层（Prompt + SOP + Tools 编排）
-    │   ├── __init__.py        # SKILL_REGISTRY + SKILL_DESCRIPTIONS
+    │   ├── __init__.py        # SKILL_REGISTRY + SKILL_DESCRIPTIONS + get_skill()
     │   ├── hvac_expert_skill.py     # HVAC 专家问答（Phase 3 完善）
     │   ├── energy_dispatch_skill.py # 能源调度分析（Phase 4 完善）
-    │   ├── ui_router_skill.py       # 页面跳转控制（Phase 2 完善）
+    │   ├── ui_router_skill.py       # 页面跳转 + 数据可视化/导出（Phase 2）
     │   └── v3_interpreter_skill.py  # V3 数据解读报告
     ├── tools/                 # V3 引擎工具（原子执行层，Mock + RAG）
     │   ├── __init__.py        # TOOL_REGISTRY + TOOL_SCHEMAS（LLM function calling 用）
@@ -149,7 +157,7 @@ EnerGraph/
     │   ├── fetch_aidc_cooling.py # AIDC 液冷状态（Mock）
     │   ├── query_hvac_knowledge.py # HVAC RAG 检索（真实，ChromaDB）
     │   ├── navigate_to_page.py   # 页面跳转 → UIAction（Phase 2）
-    │   └── java_backend.py       # Java 后端工具：COP/能耗/报警 Mock（Phase 2）
+    │   └── java_backend.py       # Java 后端工具：COP/能耗/报警查询 Mock（Phase 2）
     ├── graph/
     │   ├── state.py           # AgentState（TypedDict + Annotated，含 page_context/pending_actions）
     │   ├── nodes.py           # 三个节点函数（v3_engine_router 含 Skill 调度分发）
@@ -165,6 +173,8 @@ EnerGraph/
     └── tests/
         ├── __init__.py        # 测试包初始化
         └── test_action_agent.py  # /stream 端点集成测试（Phase 2 T6）
+        └── test_hvac_quality.py  # RAG 质量测试（Phase 3 T5，19 passed）
+        └── test_multi_intent.py  # 多意图识别测试（Phase 7 T5，16 passed）
 ---
 
 ## 4. 工具注册表（Tools）与技能注册表（Skills）
@@ -182,13 +192,16 @@ EnerGraph/
 | `fetch_cop_data` | Mock | Java 后端 | `COPData`（Phase 2） |
 | `fetch_energy_summary` | Mock | Java 后端 | `EnergySummary`（Phase 2） |
 | `fetch_active_alarms` | Mock | Java 后端 | `AlarmList`（Phase 2） |
+| `fetch_energy_range` | Mock | Java 后端 | `List[EnergySummary]`（Phase 6） |
+| `fetch_alarm_history` | Mock | Java 后端 | `AlarmList`（Phase 6） |
+| `export_data_table` | ❗ 待实现（Phase 6） | N/A（本地文件） | `DataCard`（Phase 6） |
 
 ### 4.2 Skills — 业务推理层
 
 | 技能名 | 状态 | 调用 Tools | 完善阶段 |
 |--------|------|-----------|---------|
-| `ui_router` | ✅ SOP 已实现 | navigate_to_page, fetch_cop/energy/alarms | Phase 2 |
-| `hvac_expert` | 骨架 | query_hvac_knowledge | Phase 3 |
+| `ui_router` | ✅ SOP 已实现 | navigate_to_page, fetch_cop/energy/alarms, export_data_table, fetch_energy_range/alarm_history | Phase 2 → Phase 6 扩展 |
+| `hvac_expert` | ✅ 已实现 | query_hvac_knowledge | Phase 3 ✅ |
 | `energy_dispatch` | 骨架 | parse_intent, timedit, physics, aidc | Phase 4 |
 | `v3_interpreter` | 骨架 | 无（纯 LLM） | Phase 2-4 逐步迁移 |
 
@@ -202,11 +215,14 @@ EnerGraph/
 |------|------|------|------|
 | Phase 1 | ReAct 循环 + HVAC RAG + DeepSeek V4 + 流式前端 | ✅ 完成 | — |
 | Phase 2 | Action Agent：FastAPI SSE + UIAction 跳转信号 + Java 后端工具 | ✅ 完成 | `docs/plan_phase2_action_agent.md` |
-| Phase 3 | RAG 质量优化（相关度阈值 + 拒答 + 引用来源） | 待开始 | `docs/plan_phase3_rag.md` |
+| Skills 基类 | BaseSkill 抽象基类 + 生命周期钩子 + 统一调度 | 待开始（建议最先） | `docs/plan_skills_base_class.md` |
+| Phase 3 | RAG 质量优化（相关度阈值 + 拒答 + 引用来源） | ✅ 完成 | `docs/plan_phase3_rag.md` |
 | Phase 4 | Mock → 真实预测 API（TimeDiT / PhysicsAI / AIDC）+ Java 后端真实对接 | 待开始 | `docs/plan_phase4_realapi.md` |
 | Phase 5 | 语音助手（Whisper STT + TTS） | 待开始 | `docs/plan_phase5_voice.md` |
+| Phase 6 | 数据可视化 + 报表导出（表格/图表/CSV 下载） | 待开始 | `docs/plan_phase6_visualization_export.md` |
+| Phase 7 | 多意图识别与拆分执行（单输入多意图 + 分段报告） | ✅ 完成 | `docs/plan_phase7_multi_intent.md` |
 
-**阶段顺序可以调整**，plan 文件相互独立。Phase 4 依赖算法团队 API 就绪，可与 Phase 3 并行。Phase 5 只依赖 Phase 2（API 层）。  
+**阶段顺序可以调整**，plan 文件相互独立。Phase 4 依赖算法团队 API 就绪，可与 Phase 3 并行。Phase 5 只依赖 Phase 2（API 层）。Phase 6 依赖 Phase 2，可与 Phase 3-5 并行。Phase 7 依赖 Phase 2，可与 Phase 3-6 并行。Skills 基类方案建议在 Phase 3 之前完成。  
 
 **每个 session 开发流程**:
 ```
@@ -222,6 +238,11 @@ EnerGraph/
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-04 | Phase 7 完成：多意图识别与拆分执行（IntentItem + intent_plan + 分段报告 + SSE intent_plan + 16 测试通过） | 魏博源 |
+| 2026-06-04 | Phase 3 完成：RAG 质量优化（置信度阈值过滤 + MMR 去重 + 拒答 + 引用来源 + 19 测试通过） | 魏博源 |
+| 2026-06-04 | 新增 Phase 7：多意图识别与拆分执行，创建 plan_phase7_multi_intent.md，更新 AI_CONTEXT.md | 魏博源 |
+| 2026-06-04 | 全面完善 Phase 3/4/5/6 规划文档（补充业务场景/架构决策/详细改动），新建 plan_skills_base_class.md（BaseSkill 基类方案），更新 AI_CONTEXT.md | 魏博源 |
+| 2026-06-04 | 规划 Phase 6：数据可视化 + 报表导出，创建 plan_phase6_visualization_export.md，更新 AI_CONTEXT.md（§1.3/§3/§4/§5/§6） | 魏博源 |
 | 2026-05-26 | Phase 2 T6：page_context 注入 cognitive_parser system prompt（current_route + site_id），新建 test_action_agent.py 集成测试（2 passed） | 魏博源 |
 | 2026-05-26 | Phase 2 T2（重构）：导航工具 navigate_to_page + UIRouterSkill.infer_navigation SOP，v3_engine_router 改为 Skill 调度分发（不写业务逻辑），prompts.yaml 新增 action_agent_nav_hint 路由表 | 魏博源 |
 | 2026-05-26 | Phase 2 T3：Java 后端工具（fetch_cop_data/energy_summary/active_alarms），Mock fallback，注册到 TOOL_REGISTRY | 魏博源 |
@@ -241,4 +262,4 @@ EnerGraph/
 
 ---
 
-**下一步**: 开始 Phase 3 → 读 `docs/plan_phase3_rag.md`
+**下一步**: 建议完成 Skills 基类 → 读 `docs/plan_skills_base_class.md`，然后可按任意顺序执行 Phase 4/5/6（均可并行）

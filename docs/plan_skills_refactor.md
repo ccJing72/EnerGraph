@@ -13,12 +13,13 @@ Tools（原子执行层）
   = 确定性函数，强类型 I/O，不含 Prompt
   = fetch_cop_data(), query_hvac_knowledge(), navigate_to_page() ...
 
-Skills（业务推理层）
+Skills（业务推理层）= 继承 BaseSkill
   = 专属 Prompt + SOP 流程 + Tools 编排
   = HVACExpertSkill, UIRouterSkill, EnergyDispatchSkill ...
+  = 详见 docs/plan_skills_base_class.md
 
 Graph Nodes（调度层）
-  = cognitive_parser 识别技能 → 激活对应 Skill → Skill 编排 Tools
+  = cognitive_parser 识别技能 → 激活对应 Skill → skill.execute(tool_results, state)
   = 节点代码保持精简，不含业务逻辑
 ```
 
@@ -29,7 +30,7 @@ Graph Nodes（调度层）
 ```
 src/skills/
 ├── __init__.py              # SKILL_REGISTRY + SKILL_DESCRIPTIONS
-├── hvac_expert_skill.py     # HVAC 专家问答（Phase 3 完善）
+├── hvac_expert_skill.py     # HVAC 专家问答（Phase 3 ✅ 完成）
 ├── energy_dispatch_skill.py # 能源调度分析（Phase 4 完善）
 ├── ui_router_skill.py       # 页面跳转控制（Phase 2 完善）
 └── v3_interpreter_skill.py  # V3 数据解读报告（Phase 2-4 逐步迁移）
@@ -39,17 +40,18 @@ src/skills/
 
 ## 各 Skill 说明
 
-### UIRouterSkill（Phase 2 核心）
-- **职责**: 监控数据查询 + 页面跳转信号下发
-- **Tools**: `navigate_to_page`, `fetch_cop_data`, `fetch_energy_summary`, `fetch_active_alarms`
-- **Prompt keys**: `action_agent_nav_hint`（路由表 + 跳转时机）
-- **SOP**: 识别查询意图 → Java 工具取数 → 文字总结 → UIAction 跳转信号
+### UIRouterSkill（Phase 2 核心，Phase 6 扩展）
+- **职责**: 监控数据查询 + 页面跳转信号下发 + 数据可视化/报表导出
+- **Tools**: `navigate_to_page`, `fetch_cop_data`, `fetch_energy_summary`, `fetch_active_alarms`, `fetch_energy_range`, `fetch_alarm_history`, `export_data_table`
+- **Prompt keys**: `action_agent_nav_hint`（路由表 + 跳转时机）、`data_visualization_hint`（图表/导出意图识别）
+- **SOP**: 识别查询意图 → Java 工具取数 → 文字总结 → UIAction 跳转信号 / DataCard 数据卡片
 
-### HVACExpertSkill（Phase 3 完善）
-- **职责**: HVAC 专业问答，含置信度判断与拒答
+### HVACExpertSkill（Phase 3 ✅ 完成）
+- **职责**: HVAC 专业问答，含置信度判断、拒答、引用来源
 - **Tools**: `query_hvac_knowledge`
 - **Prompt keys**: `hvac_expert`, `hvac_refusal`, `hvac_citation_format`
 - **SOP**: 检索 → 置信度判断 → 拒答 / 引用来源回答
+- **execute()**: 静态方法，处理 tool_results 返回 system_suffix + context_override
 
 ### EnergyDispatchSkill（Phase 4 完善）
 - **职责**: 能源调度全链路分析
@@ -65,16 +67,19 @@ src/skills/
 
 ---
 
-## 与 Phase 2-5 的融合计划
+## 与 Phase 2-6 的融合计划
 
 | Phase | Task | Skills 融合方式 |
 |-------|------|----------------|
+| Skills 基类 | T1-T4 BaseSkill | 建立抽象基类，迁移现有 Skill，v3_engine_router 统一调度 |
 | Phase 2 | T1 Schemas | `src/skills/` 骨架已建立（本次完成） |
 | Phase 2 | T2 导航工具 | 导航逻辑实现在 `ui_router_skill.py`，不写入 nodes.py |
 | Phase 2 | T3 Java 工具 | Java 工具注册后，`UIRouterSkill.tools` 列表已预置 |
-| Phase 3 | T1-T3 RAG 质量 | 置信度/拒答/引用逻辑实现在 `hvac_expert_skill.py` |
+| Phase 3 | T1-T5 RAG 质量 | ✅ 完成：置信度/拒答/引用逻辑实现在 `hvac_expert_skill.py`，nodes.py 通过 `hvac_context_hint` 传递 |
 | Phase 4 | T2-T4 真实 API | 各引擎工具替换实现，`EnergyDispatchSkill` 无需改动 |
 | Phase 5 | T1-T2 语音 | 新增 `voice_skill.py`，完全独立 |
+| Phase 6 | T1-T7 可视化/导出 | 扩展 `ui_router_skill.py`，新增 `infer_data_card()` + 范围查询/导出工具 |
+| Phase 7 | T1-T5 多意图 | ✅ 完成：多意图识别在 Graph 节点层，cognitive_parser 自动构建 intent_plan，Skill 不感知拆分 |
 
 ---
 
@@ -85,6 +90,8 @@ src/skills/
 | Phase 3 | 低置信度/拒答/引用逻辑无处安放，只能塞进 prompts.yaml 或节点代码 |
 | Phase 4 | `_field_map` 超过 10 行，`nodes.py` 超过 200 行，新对话 AI 读不完 |
 | Phase 5 | 语音流程与 HVAC 问答混在同一 cognitive_parser，意图识别准确率下降 |
+| Phase 6 | 多日查询/导出/图表逻辑无处安放，只能塞进 nodes.py 或新建多余 Skill |
+| Phase 7 | 多意图拆分逻辑无处安放，只能塞进 nodes.py 或新建多余 Skill |
 
 ---
 

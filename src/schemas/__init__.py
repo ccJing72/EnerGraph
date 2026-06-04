@@ -4,6 +4,7 @@ from src.schemas.v3_engine import (
     PhysicsResidual,
     AIDCCoolingStatus,
     HVACKnowledgeResult,
+    IntentItem,
 )
 from src.schemas.action_agent import (
     PageContext,
@@ -21,6 +22,7 @@ __all__ = [
     "PhysicsResidual",
     "AIDCCoolingStatus",
     "HVACKnowledgeResult",
+    "IntentItem",
     "PageContext",
     "ActionAgentInput",
     "UIAction",

@@ -6,18 +6,26 @@
 """
 import json
 import logging
+from pathlib import Path
 from typing import Any, Dict
 
+import yaml
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.schemas.v3_engine import ConstraintMatrix
 
 logger = logging.getLogger(__name__)
 
-_SYSTEM = (
-    "将用户输入解析为 JSON，字段：load_baseline(str), sla_priority(str), "
-    "time_window(str), optimization_goal(str), extra_constraints(dict)。只输出 JSON。"
-)
+_PROMPTS_PATH = Path(__file__).resolve().parents[2] / "src" / "config" / "prompts.yaml"
+
+
+def _get_system_prompt() -> str:
+    """从 prompts.yaml 加载 parse_intent system prompt。"""
+    if _PROMPTS_PATH.exists():
+        with open(_PROMPTS_PATH, "r", encoding="utf-8") as f:
+            prompts = yaml.safe_load(f) or {}
+        return prompts.get("parse_intent", {}).get("system", "")
+    return ""
 
 
 def parse_business_intent(user_input: str) -> Dict[str, Any]:
@@ -43,7 +51,7 @@ def parse_business_intent(user_input: str) -> Dict[str, Any]:
             llm = ChatOpenAI(model=model_name, temperature=0)
 
         response = llm.invoke([
-            SystemMessage(content=_SYSTEM),
+            SystemMessage(content=_get_system_prompt()),
             HumanMessage(content=user_input),
         ])
         data = json.loads(response.content)

@@ -1,6 +1,8 @@
-"""统一配置加载模块
+"""settings — 统一配置加载
 
-加载优先级: 环境变量 > YAML 配置 > 默认值
+所属层：config
+依赖：pydantic, pyyaml, python-dotenv
+对接 V3 引擎：N/A
 """
 import os
 from pathlib import Path
@@ -37,6 +39,13 @@ class ToolDef(BaseModel):
     description: str
 
 
+class RAGConfig(BaseModel):
+    """RAG 检索配置"""
+    top_k: int = Field(default=3, ge=1, le=20, description="检索返回条数")
+    confidence_threshold: float = Field(default=0.6, ge=0, le=2, description="置信度阈值，top-1 distance 超过此值标记 low_confidence")
+    dedup_similarity: float = Field(default=0.98, ge=0, le=1, description="去重相似度阈值，cosine_sim 超过此值的重复片段被剔除")
+
+
 class OutputConfig(BaseModel):
     """输出配置"""
     language: str = Field(default="zh", description="输出语言")
@@ -47,6 +56,7 @@ class AppConfig(BaseModel):
     """应用顶层配置"""
     model: ModelConfig = Field(default_factory=ModelConfig)
     agent: AgentConfig = Field(default_factory=AgentConfig)
+    rag: RAGConfig = Field(default_factory=RAGConfig)
     tools: List[ToolDef] = Field(default_factory=list)
     output: OutputConfig = Field(default_factory=OutputConfig)
 

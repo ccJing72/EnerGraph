@@ -21,6 +21,31 @@ logger = logging.getLogger(__name__)
 _PROMPTS_PATH = Path(__file__).resolve().parents[2] / "src" / "config" / "prompts.yaml"
 _prompts: Dict[str, Any] = {}
 
+# Phase 7: 工具名 → 意图类别映射
+_TOOL_CATEGORY: Dict[str, str] = {
+    "query_hvac_knowledge": "hvac",
+    "fetch_cop_data": "monitor",
+    "fetch_energy_summary": "monitor",
+    "fetch_active_alarms": "alarm",
+    "fetch_energy_range": "export",
+    "fetch_alarm_history": "alarm",
+    "query_timedit_forecast": "energy",
+    "verify_physics_consistency": "energy",
+    "fetch_aidc_cooling_status": "monitor",
+    "parse_business_intent": "energy",
+    "navigate_to_page": "general",
+    "export_data_table": "export",
+}
+
+# 工具名 → AgentState 字段映射
+_TOOL_FIELD_MAP: Dict[str, str] = {
+    "query_timedit_forecast": "timedit_data",
+    "verify_physics_consistency": "physics_verification",
+    "fetch_aidc_cooling_status": "aidc_cooling",
+    "parse_business_intent": "constraints",
+    "query_hvac_knowledge": "hvac_knowledge",
+}
+
 
 def _load_prompts() -> Dict[str, Any]:
     global _prompts
@@ -82,9 +107,25 @@ def cognitive_parser_node(state: AgentState) -> Dict[str, Any]:
     try:
         llm = _get_llm(bind_tools=True)
         response: AIMessage = llm.invoke(messages)
-        return {
-            "messages": [*messages, response],
-        }
+
+        # Phase 7: 若 LLM 输出多个 tool_calls，自动构建 intent_plan
+        updates: Dict[str, Any] = {"messages": [*messages, response]}
+        tool_calls = getattr(response, "tool_calls", None) or []
+        if len(tool_calls) > 1:
+            from src.schemas.v3_engine import IntentItem
+            intent_plan = [
+                IntentItem(
+                    id=i + 1,
+                    description=f"调用 {tc['name']}",
+                    category=_TOOL_CATEGORY.get(tc["name"], "general"),
+                    status="pending",
+                )
+                for i, tc in enumerate(tool_calls)
+            ]
+            updates["intent_plan"] = intent_plan
+            logger.info(f"多意图识别：{len(intent_plan)} 个意图")
+
+        return updates
     except Exception as e:
         logger.error(f"cognitive_parser_node 失败: {e}")
         return {"messages": messages, "error": str(e)}
@@ -115,15 +156,8 @@ def v3_engine_router_node(state: AgentState) -> Dict[str, Any]:
         tool_results.append((name, result, args))
 
         # 将结果写入对应 state 字段
-        _field_map = {
-            "query_timedit_forecast": "timedit_data",
-            "verify_physics_consistency": "physics_verification",
-            "fetch_aidc_cooling_status": "aidc_cooling",
-            "parse_business_intent": "constraints",
-            "query_hvac_knowledge": "hvac_knowledge",
-        }
-        if name in _field_map and "error" not in result:
-            updates[_field_map[name]] = result
+        if name in _TOOL_FIELD_MAP and "error" not in result:
+            updates[_TOOL_FIELD_MAP[name]] = result
 
         tool_messages.append(
             ToolMessage(
@@ -137,6 +171,14 @@ def v3_engine_router_node(state: AgentState) -> Dict[str, Any]:
     action = UIRouterSkill.infer_navigation(tool_results)
     if action is not None:
         updates["pending_actions"] = [action]
+
+    # Skill 调度：HVACExpertSkill 处理检索结果（拒答 / 引用来源）
+    has_hvac = any(name == "query_hvac_knowledge" for name, _, _ in tool_results)
+    if has_hvac:
+        from src.skills.hvac_expert_skill import HVACExpertSkill
+        prompts = _load_prompts()
+        hvac_hint = HVACExpertSkill.execute(tool_results, prompts)
+        updates["hvac_context_hint"] = hvac_hint
 
     return {"messages": tool_messages, **updates}
 
@@ -153,13 +195,39 @@ def interpreter_generator_node(state: AgentState) -> Dict[str, Any]:
     # 否则用物理数据重新生成报告
     prompts = _load_prompts()
     system_content = prompts.get("interpreter_generator", {}).get("system", "")
+
+    # Phase 3: 应用 HVAC Skill 上下文指令（拒答 / 引用来源）
+    hvac_hint = state.get("hvac_context_hint")
+    context_override = None
+    if hvac_hint:
+        system_suffix = hvac_hint.get("system_suffix", "")
+        if system_suffix:
+            system_content += system_suffix
+        context_override = hvac_hint.get("context_override")
+
+    # Phase 7: 注入多意图执行计划，引导分段报告
+    intent_plan = state.get("intent_plan")
+    if intent_plan:
+        def _intent_line(i):
+            if isinstance(i, dict):
+                return f"- 意图 {i.get('id', '?')}: {i.get('description', '')} ({i.get('status', 'pending')})"
+            return f"- 意图 {i.id}: {i.description} ({i.status})"
+        intent_summary = "\n".join(_intent_line(i) for i in intent_plan)
+        system_content += f"\n\n## 本次处理的用户意图\n{intent_summary}"
+
+    # 构建上下文数据
+    hvac_data = state.get("hvac_knowledge")
+    if context_override is not None:
+        # 拒答模式：替换检索内容，避免 LLM 看到无关检索结果
+        hvac_data = context_override
+
     context = json.dumps(
         {
             "constraints": state.get("constraints"),
             "timedit_data": state.get("timedit_data"),
             "physics_verification": state.get("physics_verification"),
             "aidc_cooling": state.get("aidc_cooling"),
-            "hvac_knowledge": state.get("hvac_knowledge"),
+            "hvac_knowledge": hvac_data,
         },
         ensure_ascii=False,
         indent=2,

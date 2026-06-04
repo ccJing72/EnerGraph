@@ -35,16 +35,40 @@ with st.sidebar:
     target_date = st.text_input("目标日期（调度场景）", value="2026-05-15")
     datacenter_id = st.text_input("数据中心 ID（AIDC 场景）", value="Mock 假数据")
     st.divider()
-    st.markdown("**示例问题**")
-    examples = [
-        "冷水机组 COP 如何计算？",
-        "地铁车站环控系统如何节能优化？",
-        "冷冻水系统出现压差异常如何诊断？",
-        "ASHRAE 标准中空调系统能效有哪些要求？",
+    st.markdown("**平台专属**")
+    platform_examples = [
+        "我们冷水机房的能效（COP）怎么样？在行业里是什么水平？",
+        "\"主动寻优\"是怎么工作的？真的能省电吗？",
+        "平台上看到的\"峰平谷分析\"有什么用？",
+        "平台说数据上了区块链，这对我有什么实际好处？",
+        "\"负荷预测\"准不准？预测未来负荷有什么用？",
     ]
-    for ex in examples:
-        if st.button(ex, use_container_width=True):
+    for ex in platform_examples:
+        if st.button(ex, use_container_width=True, key=f"plat_{ex[:20]}"):
             st.session_state.pending_input = ex
+
+    st.markdown("**通用 HVAC（测试 RAG）**")
+    hvac_examples = [
+        "含湿量与相对湿度有何区别？在工程计算中如何选用？",
+        "已知一台离心机组，负载率93%，冷却水进水温度33℃，分析其能效表现",
+        "冷冻水系统出现压差异常如何诊断？",
+        "地铁车站环控系统如何节能优化？",
+    ]
+    for ex in hvac_examples:
+        if st.button(ex, use_container_width=True, key=f"hvac_{ex[:20]}"):
+            st.session_state.pending_input = ex
+
+    st.markdown("**多意图测试（Phase 7）**")
+    multi_intent_examples = [
+        "查一下冷水机房的 COP，顺便看看今天的能耗汇总",
+        "冷水机房 COP 多少？有没有报警？",
+        "帮我查一下今天的能耗，再看看光伏发电情况",
+        "查 COP，导出近十天能耗，看看有没有报警",
+    ]
+    for ex in multi_intent_examples:
+        if st.button(ex, use_container_width=True, key=f"multi_{ex[:20]}"):
+            st.session_state.pending_input = ex
+
     if st.button("清空对话", type="secondary", use_container_width=True):
         st.session_state.chat_history = []
         st.rerun()
@@ -53,6 +77,11 @@ with st.sidebar:
 for msg in st.session_state.chat_history:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
+        if msg["role"] == "assistant" and msg.get("details"):
+            with st.expander("📋 工具调用详情 & 知识库来源", expanded=False):
+                for label, data in msg["details"].items():
+                    st.subheader(label)
+                    st.json(data)
 
 # 处理侧边栏示例按钮触发
 if "pending_input" in st.session_state:
@@ -74,17 +103,17 @@ if user_input:
                 f"[target_date={target_date}, datacenter_id={datacenter_id}]"
             )
 
-            answer_ph = st.empty()
-            think_ph = st.empty()
-            steps_ph = st.empty()
+            steps_ph = st.empty()           # 最上：ReAct 步骤
+            details_ph = st.empty()        # 中间：工具/RAG 详情（在回答上方）
+            answer_ph = st.empty()         # 最下：最终回答
 
             answer_text = ""
-            think_text = ""
             steps = []
             result = {}
             tool_names = []
             seen_nodes = set()
             current_node = None
+            tools_have_run = False  # 追踪工具是否已执行，用于控制流式内容路由
 
             for event in graph.stream(
                 {"user_input": full_input},
@@ -118,14 +147,19 @@ if user_input:
                     content = chunk.content if hasattr(chunk, "content") and chunk.content else ""
                     if content:
                         if node == "interpreter_generator":
+                            # interpreter 生成的内容直接进入回答区
                             answer_text += content
                             answer_ph.markdown(answer_text + "▌")
-                        elif node == "cognitive_parser":
-                            think_text += content
-                            think_ph.caption(f"💭 {think_text[:200]}{'…' if len(think_text) > 200 else ''}")
+                        elif node == "cognitive_parser" and tools_have_run:
+                            # 工具已执行，cognitive_parser 基于工具结果生成回答 → 流式输出
+                            answer_text += content
+                            answer_ph.markdown(answer_text + "▌")
 
                 elif mode == "updates":
                     for node_name, update in data.items():
+                        # 标记工具已执行
+                        if node_name == "v3_engine_router":
+                            tools_have_run = True
                         # 确保节点出现在步骤中
                         if node_name not in seen_nodes:
                             seen_nodes.add(node_name)
@@ -140,34 +174,59 @@ if user_input:
                             if k not in ("messages",):
                                 result[k] = v
 
-            # 最终输出
-            final = answer_text or result.get("final_report", "（无回答）")
-            answer_ph.markdown(final)
-            think_ph.empty()
+            # ========== 流式结束后的布局：细节在上，回答在下 ==========
 
-            # 工具调用详情
+            # 1. 多意图计划展示（Phase 7）
+            intent_plan = result.get("intent_plan")
+            if intent_plan:
+                intent_items = []
+                for i in intent_plan:
+                    if isinstance(i, dict):
+                        desc = i.get("description", "")
+                        cat = i.get("category", "")
+                        status = i.get("status", "")
+                    else:
+                        desc, cat, status = i.description, i.category, i.status
+                    emoji = {"monitor": "📡", "hvac": "❄️", "energy": "⚡", "alarm": "🚨", "export": "📊"}.get(cat, "📌")
+                    intent_items.append(f"{emoji} 意图 {i.id if not isinstance(i, dict) else i.get('id', '?')}: {desc}")
+                with st.container():
+                    st.markdown("**🧩 识别到多个意图：**")
+                    for item in intent_items:
+                        st.markdown(f"- {item}")
+                    st.divider()
+
+            # 2. 工具调用详情 / RAG 来源（在回答上方）
             details = {}
             if result.get("hvac_knowledge"):
-                details["HVAC 知识库检索"] = result["hvac_knowledge"]
+                details["📚 HVAC 知识库检索"] = result["hvac_knowledge"]
             if result.get("timedit_data"):
-                details["TimeDiT 预测"] = result["timedit_data"]
+                details["📈 TimeDiT 预测"] = result["timedit_data"]
             if result.get("physics_verification"):
-                details["PhysicsAI 验证"] = result["physics_verification"]
+                details["🔬 PhysicsAI 验证"] = result["physics_verification"]
             if result.get("aidc_cooling"):
-                details["AIDC 液冷状态"] = result["aidc_cooling"]
+                details["❄️ AIDC 液冷状态"] = result["aidc_cooling"]
             if result.get("constraints"):
-                details["意图解析（ConstraintMatrix）"] = result["constraints"]
+                details["🎯 意图解析（ConstraintMatrix）"] = result["constraints"]
 
             if details:
-                with st.expander("引擎数据详情"):
-                    for label, data in details.items():
-                        st.subheader(label)
-                        st.json(data)
+                with details_ph.container():
+                    with st.expander("📋 工具调用详情 & 知识库来源", expanded=False):
+                        for label, data in details.items():
+                            st.subheader(label)
+                            st.json(data)
+            else:
+                details_ph.empty()
+
+            # 3. 最终回答
+            final = answer_text or result.get("final_report", "（无回答）")
+            answer_ph.markdown(final)
 
             if result.get("error"):
                 st.warning(f"警告: {result['error']}")
 
-            st.session_state.chat_history.append({"role": "assistant", "content": final})
+            st.session_state.chat_history.append(
+                {"role": "assistant", "content": final, "details": details}
+            )
 
         except Exception as e:
             import traceback
@@ -175,7 +234,11 @@ if user_input:
             st.error(f"运行出错: {e}")
             with st.expander("调试详情"):
                 st.code(err_detail)
-            st.session_state.chat_history.append({"role": "assistant", "content": f"运行出错: {e}"})
+            st.session_state.chat_history.append(
+                {"role": "assistant", "content": f"运行出错: {e}", "details": {}}
+            )
+
+        st.rerun()
 
 st.markdown("---")
-st.caption("Phase 1 Demo · HVAC 知识库 5613 条 · V3 引擎为 Mock 数据")
+st.caption("Phase 1/2/3/7 Demo · HVAC 知识库 5613 条 · V3 引擎为 Mock 数据 · 支持多意图识别")

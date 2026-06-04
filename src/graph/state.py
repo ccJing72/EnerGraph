@@ -14,6 +14,7 @@ from src.schemas.v3_engine import (
     AIDCCoolingStatus,
     ConstraintMatrix,
     HVACKnowledgeResult,
+    IntentItem,
     PhysicsResidual,
     TimeDiTForecast,
 )
@@ -39,6 +40,12 @@ class AgentState(TypedDict, total=False):
 
     # HVAC 知识库检索结果
     hvac_knowledge: Optional[HVACKnowledgeResult]
+
+    # HVAC Skill 上下文提示（Phase 3: 拒答/引用指令，由 HVACExpertSkill.execute() 生成）
+    hvac_context_hint: Optional[dict]
+
+    # 多意图执行计划（Phase 7: cognitive_parser 识别后填充，interpreter_generator 读取）
+    intent_plan: Optional[List[IntentItem]]
 
     # RAG 预留
     context: Optional[str]
