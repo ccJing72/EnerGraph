@@ -19,7 +19,6 @@ from src.config.settings import settings
 from src.skills.hvac_expert_skill import HVACExpertSkill
 from src.tools.query_hvac_knowledge import _deduplicate, _build_source_snippets
 
-
 # ---------------------------------------------------------------------------
 # T4: MMR 去重
 # ---------------------------------------------------------------------------
@@ -181,7 +180,7 @@ class TestConfidenceThreshold:
 
 
 class TestHVACExpertSkillExecute:
-    """HVACExpertSkill.execute 静态方法测试"""
+    """HVACExpertSkill.execute 实例方法测试（BaseSkill 接口）"""
 
     def _make_prompts(self):
         return {
@@ -189,8 +188,14 @@ class TestHVACExpertSkillExecute:
             "hvac_citation_format": {"system": "【引用格式】回答末尾标注依据"},
         }
 
+    def _execute_skill(self, tool_results):
+        """创建 Skill 实例并 Mock prompts 后执行。"""
+        skill = HVACExpertSkill()
+        with patch("src.skills.hvac_expert_skill.load_prompts", return_value=self._make_prompts()):
+            return skill.execute(tool_results, {})
+
     def test_low_confidence_triggers_refusal(self):
-        """low_confidence=True → system_suffix 包含拒答指令"""
+        """low_confidence=True → hvac_context_hint 包含拒答指令"""
         tool_results = [
             ("query_hvac_knowledge", {
                 "query": "量子力学在空调中的应用",
@@ -199,13 +204,14 @@ class TestHVACExpertSkillExecute:
                 "source_snippets": ["无关来源"],
             }, {"question": "量子力学在空调中的应用"}),
         ]
-        result = HVACExpertSkill.execute(tool_results, self._make_prompts())
-        assert result["low_confidence"] is True
-        assert "拒答" in result["system_suffix"]
-        assert result["context_override"]["low_confidence"] is True
+        result = self._execute_skill(tool_results)
+        hint = result["hvac_context_hint"]
+        assert hint["low_confidence"] is True
+        assert "拒答" in hint["system_suffix"]
+        assert hint["context_override"]["low_confidence"] is True
 
     def test_normal_confidence_adds_citation(self):
-        """low_confidence=False → system_suffix 包含引用格式指令"""
+        """low_confidence=False → hvac_context_hint 包含引用格式指令"""
         tool_results = [
             ("query_hvac_knowledge", {
                 "query": "冷水机组 COP 偏低",
@@ -214,29 +220,32 @@ class TestHVACExpertSkillExecute:
                 "source_snippets": ["GB/T 18430.1"],
             }, {"question": "冷水机组 COP 偏低"}),
         ]
-        result = HVACExpertSkill.execute(tool_results, self._make_prompts())
-        assert result["low_confidence"] is False
-        assert "引用格式" in result["system_suffix"]
-        assert "GB/T 18430.1" in result["system_suffix"]
-        assert result["context_override"] is None
+        result = self._execute_skill(tool_results)
+        hint = result["hvac_context_hint"]
+        assert hint["low_confidence"] is False
+        assert "引用格式" in hint["system_suffix"]
+        assert "GB/T 18430.1" in hint["system_suffix"]
+        assert hint["context_override"] is None
 
     def test_no_hvac_tool_returns_empty(self):
-        """没有 query_hvac_knowledge 工具调用 → 返回空"""
+        """没有 query_hvac_knowledge 工具调用 → 返回空 hvac_context_hint"""
         tool_results = [
             ("fetch_cop_data", {"cop": 4.2}, {"site_id": "SH-01"}),
         ]
-        result = HVACExpertSkill.execute(tool_results, self._make_prompts())
-        assert result["system_suffix"] == ""
-        assert result["low_confidence"] is False
+        result = self._execute_skill(tool_results)
+        hint = result["hvac_context_hint"]
+        assert hint["system_suffix"] == ""
+        assert hint["low_confidence"] is False
 
     def test_error_result_ignored(self):
         """query_hvac_knowledge 返回 error → 视为无结果"""
         tool_results = [
             ("query_hvac_knowledge", {"error": "知识库未初始化"}, {"question": "test"}),
         ]
-        result = HVACExpertSkill.execute(tool_results, self._make_prompts())
-        assert result["system_suffix"] == ""
-        assert result["low_confidence"] is False
+        result = self._execute_skill(tool_results)
+        hint = result["hvac_context_hint"]
+        assert hint["system_suffix"] == ""
+        assert hint["low_confidence"] is False
 
 
 # ---------------------------------------------------------------------------

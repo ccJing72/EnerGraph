@@ -19,9 +19,12 @@ SOP：
 Prompt keys（src/config/prompts.yaml）：
   - interpreter_generator : 报告生成指令（已有）
 """
+from typing import Any, Dict, List, Tuple
+
+from src.skills.base_skill import BaseSkill
 
 
-class V3InterpreterSkill:
+class V3InterpreterSkill(BaseSkill):
     """V3 引擎数据解读与报告生成技能。
 
     当前为骨架占位，随 Phase 2-4 推进逐步将
@@ -32,3 +35,11 @@ class V3InterpreterSkill:
     tools = []  # 纯 LLM 推理，不调用 Tools
     prompt_keys = ["interpreter_generator"]
     description = "V3 引擎数据解读（将物理残差/SOC 曲线转化为 Markdown 报告）"
+
+    def execute(
+        self,
+        tool_results: List[Tuple[str, Dict[str, Any], Dict[str, Any]]],
+        state: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """报告生成编排逻辑。当前返回空更新，等后续迁移 interpreter 逻辑。"""
+        return {}

@@ -16,9 +16,12 @@ Phase 4 时，各 Tool 内部从 Mock 切换为真实 HTTP，此 Skill 无需改
 Prompt keys（src/config/prompts.yaml）：
   - energy_dispatch_intent : 能源调度意图解析指令（替代原 cognitive_parser）
 """
+from typing import Any, Dict, List, Tuple
+
+from src.skills.base_skill import BaseSkill
 
 
-class EnergyDispatchSkill:
+class EnergyDispatchSkill(BaseSkill):
     """能源调度分析技能。
 
     当前为骨架占位，Phase 4 T2-T4 实现真实 API 对接后完善。
@@ -33,3 +36,11 @@ class EnergyDispatchSkill:
     ]
     prompt_keys = ["energy_dispatch_intent", "interpreter_generator"]
     description = "能源调度分析（负荷预测、光伏协同、物理验证、排产计划）"
+
+    def execute(
+        self,
+        tool_results: List[Tuple[str, Dict[str, Any], Dict[str, Any]]],
+        state: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """能源调度编排逻辑。Phase 4 完善，当前返回空更新。"""
+        return {}

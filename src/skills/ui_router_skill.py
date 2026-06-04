@@ -22,6 +22,7 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.schemas.action_agent import UIAction
+from src.skills.base_skill import BaseSkill
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ _TOOL_ROUTE_MAP: Dict[str, str] = {
 }
 
 
-class UIRouterSkill:
+class UIRouterSkill(BaseSkill):
     """监控页面查询与跳转技能。
 
     v3_engine_router 执行完本轮工具调用后，将结果列表传给 infer_navigation()，
@@ -50,8 +51,31 @@ class UIRouterSkill:
     prompt_keys = ["action_agent_nav_hint"]
     description = "监控页面查询与跳转（实时 COP、能耗、报警，下发页面跳转信号）"
 
+    def execute(
+        self,
+        tool_results: List[Tuple[str, Dict[str, Any], Dict[str, Any]]],
+        state: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """根据工具调用结果推断页面跳转，返回 AgentState 更新。
+
+        优先级：
+          1. LLM 显式调用了 navigate_to_page → 原样采用
+          2. LLM 调用了 Java 后端工具 → 根据工具类型自动映射路由
+
+        Args:
+            tool_results: [(tool_name, result_dict, args_dict), ...]
+            state: 当前 AgentState（只读）
+
+        Returns:
+            AgentState 更新字典（pending_actions），无匹配时返回空
+        """
+        action = self._infer_navigation(tool_results)
+        if action is not None:
+            return {"pending_actions": [action]}
+        return {}
+
     @staticmethod
-    def infer_navigation(
+    def _infer_navigation(
         tool_results: List[Tuple[str, Dict[str, Any], Dict[str, Any]]],
     ) -> Optional[UIAction]:
         """SOP 核心：根据本轮工具调用结果推断页面跳转。

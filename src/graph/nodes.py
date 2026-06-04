@@ -166,19 +166,16 @@ def v3_engine_router_node(state: AgentState) -> Dict[str, Any]:
             )
         )
 
-    # Skill 调度：UIRouterSkill 根据本轮工具调用生成 UIAction
-    from src.skills.ui_router_skill import UIRouterSkill
-    action = UIRouterSkill.infer_navigation(tool_results)
-    if action is not None:
-        updates["pending_actions"] = [action]
-
-    # Skill 调度：HVACExpertSkill 处理检索结果（拒答 / 引用来源）
-    has_hvac = any(name == "query_hvac_knowledge" for name, _, _ in tool_results)
-    if has_hvac:
-        from src.skills.hvac_expert_skill import HVACExpertSkill
-        prompts = _load_prompts()
-        hvac_hint = HVACExpertSkill.execute(tool_results, prompts)
-        updates["hvac_context_hint"] = hvac_hint
+    # Skill 统一调度：遍历注册表，匹配本轮工具调用
+    from src.skills import get_matched_skills
+    tool_names = [name for name, _, _ in tool_results]
+    for skill in get_matched_skills(tool_names):
+        state_for_skill = {**state, **updates}
+        state_for_skill = skill.before_execute(state_for_skill)
+        skill_updates = skill.execute(tool_results, state_for_skill)
+        skill_updates = skill.after_execute(state_for_skill, skill_updates)
+        updates.update(skill_updates)
+        logger.info(f"Skill {skill.name} 执行完毕，更新字段: {list(skill_updates.keys())}")
 
     return {"messages": tool_messages, **updates}
 

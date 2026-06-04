@@ -1,7 +1,7 @@
 # 青山 V3 多模态调度 Agent — 项目上下文
 
 ## 项目状态
-**当前阶段**: Phase 1 完成 ✅ | Phase 2 完成 ✅ | Phase 3 完成 ✅ | Phase 7 完成 ✅  
+**当前阶段**: Phase 1 完成 ✅ | Phase 2 完成 ✅ | Phase 3 完成 ✅ | Phase 7 完成 ✅ | Skills 基类完成 ✅  
 **最后更新**: 2026-06-04  
 **项目性质**: 企业级落地方案，南京福加智能科技有限公司内部项目  
 **GitHub**: https://github.com/Webr1ng/EnerGraph.git  
@@ -143,8 +143,9 @@ EnerGraph/
     │   │                      #   PhysicsResidual / AIDCCoolingStatus / HVACKnowledgeResult /
     │   │                      #   IntentItem（Phase 7）
     │   └── action_agent.py    # PageContext / ActionAgentInput / UIAction（Phase 2）
-    ├── skills/                # 业务技能层（Prompt + SOP + Tools 编排）
-    │   ├── __init__.py        # SKILL_REGISTRY + SKILL_DESCRIPTIONS + get_skill()
+    ├── skills/                # 业务技能层（Prompt + SOP + Tools 编排，均继承 BaseSkill）
+    │   ├── __init__.py        # SKILL_REGISTRY + SKILL_DESCRIPTIONS + get_skill() + get_matched_skills()
+    │   ├── base_skill.py      # BaseSkill 抽象基类（execute / before / after 钩子）
     │   ├── hvac_expert_skill.py     # HVAC 专家问答（Phase 3 完善）
     │   ├── energy_dispatch_skill.py # 能源调度分析（Phase 4 完善）
     │   ├── ui_router_skill.py       # 页面跳转 + 数据可视化/导出（Phase 2）
@@ -172,9 +173,10 @@ EnerGraph/
     │   └── app.py             # Streamlit 演示前端（token 级流式）
     └── tests/
         ├── __init__.py        # 测试包初始化
-        └── test_action_agent.py  # /stream 端点集成测试（Phase 2 T6）
+        └── test_action_agent.py  # /stream 端点集成测试（Phase 2 T6，2 passed）
         └── test_hvac_quality.py  # RAG 质量测试（Phase 3 T5，19 passed）
         └── test_multi_intent.py  # 多意图识别测试（Phase 7 T5，16 passed）
+        └── test_base_skill.py    # BaseSkill 基类契约测试（15 passed）
 ---
 
 ## 4. 工具注册表（Tools）与技能注册表（Skills）
@@ -215,7 +217,7 @@ EnerGraph/
 |------|------|------|------|
 | Phase 1 | ReAct 循环 + HVAC RAG + DeepSeek V4 + 流式前端 | ✅ 完成 | — |
 | Phase 2 | Action Agent：FastAPI SSE + UIAction 跳转信号 + Java 后端工具 | ✅ 完成 | `docs/plan_phase2_action_agent.md` |
-| Skills 基类 | BaseSkill 抽象基类 + 生命周期钩子 + 统一调度 | 待开始（建议最先） | `docs/plan_skills_base_class.md` |
+| Skills 基类 | BaseSkill 抽象基类 + 生命周期钩子 + 统一调度 | ✅ 完成 | `docs/plan_skills_base_class.md` |
 | Phase 3 | RAG 质量优化（相关度阈值 + 拒答 + 引用来源） | ✅ 完成 | `docs/plan_phase3_rag.md` |
 | Phase 4 | Mock → 真实预测 API（TimeDiT / PhysicsAI / AIDC）+ Java 后端真实对接 | 待开始 | `docs/plan_phase4_realapi.md` |
 | Phase 5 | 语音助手（Whisper STT + TTS） | 待开始 | `docs/plan_phase5_voice.md` |
@@ -238,6 +240,7 @@ EnerGraph/
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-04 | Skills 基类完成：BaseSkill 抽象基类 + 4 个 Skill 迁移 + 统一调度 + get_skill/get_matched_skills 工厂函数 + 15 测试通过（总 53） | 魏博源 |
 | 2026-06-04 | Phase 7 完成：多意图识别与拆分执行（IntentItem + intent_plan + 分段报告 + SSE intent_plan + 16 测试通过） | 魏博源 |
 | 2026-06-04 | Phase 3 完成：RAG 质量优化（置信度阈值过滤 + MMR 去重 + 拒答 + 引用来源 + 19 测试通过） | 魏博源 |
 | 2026-06-04 | 新增 Phase 7：多意图识别与拆分执行，创建 plan_phase7_multi_intent.md，更新 AI_CONTEXT.md | 魏博源 |
@@ -262,4 +265,4 @@ EnerGraph/
 
 ---
 
-**下一步**: 建议完成 Skills 基类 → 读 `docs/plan_skills_base_class.md`，然后可按任意顺序执行 Phase 4/5/6（均可并行）
+**下一步**: 可按任意顺序执行 Phase 4/5/6（均可并行）
