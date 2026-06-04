@@ -8,7 +8,7 @@
 - **RAG 质量优化**：distance 阈值过滤 + 余弦相似度 MMR 去重（0.98 阈值）+ source_snippets 引用来源
 - **多意图识别**：单输入多意图自动拆分，cognitive_parser 并行/串行调度，interpreter 分段报告输出
 - **Action Agent**：理解自然语言意图 → 调用 Java 后端监控 API → 流式返回文字总结 + 页面跳转信号
-- **Skills 分层架构**：Skills（业务推理层，专属 Prompt + SOP + Tools 编排）与 Tools（原子执行层）分离
+- **Skills 分层架构**：BaseSkill 抽象基类统一接口，Skills（业务推理层）与 Tools（原子执行层）分离，v3_engine_router 通过统一调度分发
 - **ReAct 循环**：cognitive_parser → v3_engine_router（工具执行）→ interpreter_generator（报告生成），token 级流式输出
 - **多 LLM 支持**：DeepSeek V4 / OpenAI / Claude，`LLM_PROVIDER` 环境变量一键切换
 
@@ -72,9 +72,10 @@ EnerGraph/
 │   │   ├── v3_engine.py           # Pydantic 模型（Tool I/O + IntentItem）
 │   │   └── action_agent.py        # PageContext / UIAction / COPData 等
 │   ├── skills/                    # 业务技能层（Prompt + SOP + Tools 编排）
-│   │   ├── hvac_expert_skill.py   # HVAC 专家问答
+│   │   ├── base_skill.py          # BaseSkill 抽象基类（execute/生命周期钩子）
+│   │   ├── hvac_expert_skill.py   # HVAC 专家问答（置信度判断/拒答/引用）
 │   │   ├── energy_dispatch_skill.py
-│   │   ├── ui_router_skill.py     # 页面跳转控制
+│   │   ├── ui_router_skill.py     # 页面跳转控制（infer_navigation SOP）
 │   │   └── v3_interpreter_skill.py
 │   ├── tools/                     # 原子执行层（确定性函数，不含 Prompt）
 │   │   ├── query_hvac_knowledge.py # HVAC RAG 检索（ChromaDB + 去重 + 阈值）
@@ -93,7 +94,8 @@ EnerGraph/
 │   ├── frontend/
 │   │   └── app.py                 # Streamlit 演示前端
 │   └── tests/
-│       ├── test_action_agent.py   # /stream 集成测试（2 tests）
+│       ├── test_action_agent.py   # /stream 集成测试（3 tests）
+│       ├── test_base_skill.py     # BaseSkill 基类契约测试（15 tests）
 │       ├── test_hvac_quality.py   # RAG 质量测试（19 tests）
 │       └── test_multi_intent.py   # 多意图识别测试（16 tests）
 ├── data/hvac_knowledge/           # ChromaDB 向量库（rag_ingest 后生成）

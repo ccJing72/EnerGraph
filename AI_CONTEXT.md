@@ -173,10 +173,10 @@ EnerGraph/
     │   └── app.py             # Streamlit 演示前端（token 级流式）
     └── tests/
         ├── __init__.py        # 测试包初始化
-        └── test_action_agent.py  # /stream 端点集成测试（Phase 2 T6，2 passed）
-        └── test_hvac_quality.py  # RAG 质量测试（Phase 3 T5，19 passed）
+        ├── test_action_agent.py  # /stream 端点集成测试（Phase 2 T6，3 passed）
+        ├── test_base_skill.py    # BaseSkill 基类契约测试（Skills 基类，15 passed）
+        ├── test_hvac_quality.py  # RAG 质量测试（Phase 3 T5，19 passed）
         └── test_multi_intent.py  # 多意图识别测试（Phase 7 T5，16 passed）
-        └── test_base_skill.py    # BaseSkill 基类契约测试（15 passed）
 ---
 
 ## 4. 工具注册表（Tools）与技能注册表（Skills）
@@ -240,6 +240,7 @@ EnerGraph/
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-04 | 代码规范审计修复：11 个 __init__.py 补充标准 docstring、graph/nodes.py 和 services/api.py 补充返回值类型标注和 Args/Returns docstring、CLAUDE.md 补充 skills/services/memory/tests 层名枚举 | 魏博源 |
 | 2026-06-04 | Skills 基类完成：BaseSkill 抽象基类 + 4 个 Skill 迁移 + 统一调度 + get_skill/get_matched_skills 工厂函数 + 15 测试通过（总 53） | 魏博源 |
 | 2026-06-04 | Phase 7 完成：多意图识别与拆分执行（IntentItem + intent_plan + 分段报告 + SSE intent_plan + 16 测试通过） | 魏博源 |
 | 2026-06-04 | Phase 3 完成：RAG 质量优化（置信度阈值过滤 + MMR 去重 + 拒答 + 引用来源 + 19 测试通过） | 魏博源 |
