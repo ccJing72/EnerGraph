@@ -52,11 +52,11 @@ def ingest(jsonl_path: str = str(JSONL_PATH), db_path: str = DB_PATH) -> int:
         raise FileNotFoundError(f"语料文件不存在: {jsonl_path}")
 
     try:
-        from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
-        ef = ONNXMiniLM_L6_V2(preferred_providers=["CPUExecutionProvider"])
-    except ImportError:
         from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
-        ef = SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
+        ef = SentenceTransformerEmbeddingFunction(model_name="BAAI/bge-small-zh-v1.5")
+    except ImportError as e:
+        print(f"[rag_ingest] 需要 sentence-transformers 库: {e}")
+        return 0
     client = chromadb.PersistentClient(path=db_path)
 
     existing = [c.name for c in client.list_collections()]
@@ -122,11 +122,11 @@ def append_supplement(
         raise FileNotFoundError(f"补充语料文件不存在: {supplement_path}")
 
     try:
-        from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
-        ef = ONNXMiniLM_L6_V2(preferred_providers=["CPUExecutionProvider"])
-    except ImportError:
         from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
-        ef = SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
+        ef = SentenceTransformerEmbeddingFunction(model_name="BAAI/bge-small-zh-v1.5")
+    except ImportError as e:
+        print(f"[rag_ingest] 需要 sentence-transformers 库: {e}")
+        return 0
 
     client = chromadb.PersistentClient(path=db_path)
     col = client.get_collection(COLLECTION_NAME, embedding_function=ef)

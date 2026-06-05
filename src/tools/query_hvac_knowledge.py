@@ -132,11 +132,10 @@ def query_hvac_knowledge(question: str) -> Dict[str, Any]:
         dedup_similarity = settings.rag.dedup_similarity
 
         try:
-            from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
-            ef = ONNXMiniLM_L6_V2(preferred_providers=["CPUExecutionProvider"])
-        except ImportError:
             from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
-            ef = SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
+            ef = SentenceTransformerEmbeddingFunction(model_name="BAAI/bge-small-zh-v1.5")
+        except ImportError as e:
+            return {"error": f"query_hvac_knowledge: 需要 sentence-transformers 库: {e}"}
 
         client = chromadb.PersistentClient(path=DB_PATH)
         existing = [c.name for c in client.list_collections()]

@@ -240,7 +240,8 @@ EnerGraph/
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
-| 2026-06-05 | Agent 导航功能修复：创建 config/routes.yaml（24个可访问+10个受限真实路由）、更新 prompts.yaml 路由表、重构 ui_router_skill.py（RouteRegistry类+模糊匹配）、新增单元测试（4个测试通过）、settings.py 扩展支持 prompts/routes 加载 | 魏博源 |
+| 2026-06-05 | RAG 质量修复：删除8条重复含湿量问答、优化回答格式、切换 embedding 模型为 BAAI/bge-small-zh-v1.5（中文HVAC专业术语匹配大幅提升） | 魏博源 |
+| 2026-06-05 | 修复 query_hvac_knowledge NumPy 数组布尔判断错误 + Agent 导航功能修复 | 魏博源 |
 | 2026-06-04 | 代码规范审计修复：11 个 __init__.py 补充标准 docstring、graph/nodes.py 和 services/api.py 补充返回值类型标注和 Args/Returns docstring、CLAUDE.md 补充 skills/services/memory/tests 层名枚举 | 魏博源 |
 | 2026-06-04 | Skills 基类完成：BaseSkill 抽象基类 + 4 个 Skill 迁移 + 统一调度 + get_skill/get_matched_skills 工厂函数 + 15 测试通过（总 53） | 魏博源 |
 | 2026-06-04 | Phase 7 完成：多意图识别与拆分执行（IntentItem + intent_plan + 分段报告 + SSE intent_plan + 16 测试通过） | 魏博源 |
