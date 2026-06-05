@@ -54,7 +54,8 @@ def _deduplicate(
     for idx, (doc, dist, meta) in enumerate(zip(docs, distances, metadatas)):
         is_dup = False
 
-        if embeddings and idx < len(embeddings):
+        # 修复：避免对 NumPy 数组直接布尔判断
+        if embeddings is not None and len(embeddings) > idx:
             # 精确去重：计算与已选文档的余弦相似度
             emb = embeddings[idx]
             for sel_emb in selected_embeddings:
@@ -73,7 +74,8 @@ def _deduplicate(
             selected_docs.append(doc)
             selected_distances.append(dist)
             selected_metas.append(meta)
-            if embeddings and idx < len(embeddings):
+            # 修复：避免对 NumPy 数组直接布尔判断
+            if embeddings is not None and len(embeddings) > idx:
                 selected_embeddings.append(embeddings[idx])
 
     logger.debug(f"去重前: {len(docs)} 条, 去重后: {len(selected_docs)} 条")
@@ -153,7 +155,9 @@ def query_hvac_knowledge(question: str) -> Dict[str, Any]:
         docs = res["documents"][0]
         metas = res["metadatas"][0]
         distances = res["distances"][0]
-        embeddings = res.get("embeddings", [[]])[0] if res.get("embeddings") else None
+        # 修复：避免对 NumPy 数组直接布尔判断
+        emb_data = res.get("embeddings")
+        embeddings = emb_data[0] if emb_data is not None and len(emb_data) > 0 else None
 
         # T4: MMR 去重（使用文档 embedding 计算余弦相似度）
         docs, distances, metas = _deduplicate(
@@ -167,7 +171,9 @@ def query_hvac_knowledge(question: str) -> Dict[str, Any]:
         metas = metas[:top_k]
 
         # T1: 置信度阈值过滤
-        low_confidence = len(distances) == 0 or distances[0] > confidence_threshold
+        # 确保 distances[0] 是标量值（避免 NumPy 数组布尔判断错误）
+        first_distance = float(distances[0]) if len(distances) > 0 else float('inf')
+        low_confidence = len(distances) == 0 or first_distance > confidence_threshold
 
         # 生成引用来源摘要
         source_snippets = _build_source_snippets(docs, metas)
