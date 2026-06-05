@@ -1,0 +1,216 @@
+# 福加能碳管理平台 - 路由注册表
+# 版本: v1.0
+# 同步日期: 2026-06-05
+# 数据来源: docs/analysis_nav_routes.md（前端真实路由爬取分析）
+# 维护规则: 前端路由变更后需同步更新此文件
+
+# 可直接访问的路由（共24个）
+accessible_routes:
+  # 总览类（2个）
+  - path: "/index/index"
+    name: "首页"
+    keywords: ["首页", "总览", "概览", "dashboard", "主页"]
+    category: "总览"
+    description: "综合概览：用能排名、COP、环境参数、能效日历、现场画面"
+
+  - path: "/fucaView"
+    name: "项目概览"
+    keywords: ["项目概览", "项目", "概况", "碳排", "绿电"]
+    category: "总览"
+    description: "项目概况、碳排、光伏、储能、充电桩、用电占比、空调能效"
+
+  # 综合监控类（1个）
+  - path: "/integrated-monitor/energy-monitor"
+    name: "能源监控"
+    keywords: ["能源监控", "能耗", "能源", "监控"]
+    category: "综合监控"
+    description: "今日/本月总能耗、用能趋势"
+
+  # 光储协同类（1个）
+  - path: "/coordination/energy"
+    name: "光储实时能量"
+    keywords: ["光储", "光伏", "储能", "能量流", "实时能量"]
+    category: "光储协同"
+    description: "能量流向桑基图、实时功率、供需结构"
+
+  # 用能分析类（6个）
+  - path: "/analysis/consumption-panel"
+    name: "能耗分析"
+    keywords: ["能耗分析", "消费面板", "用能分析", "能耗"]
+    category: "用能分析"
+    description: "区域/设备/类型/时间筛选的能耗趋势和设备占比"
+
+  - path: "/analysis/peak-flat-valley"
+    name: "峰平谷分析"
+    keywords: ["峰平谷", "峰谷", "电价", "尖峰平谷"]
+    category: "用能分析"
+    description: "尖峰平谷电量对比、电费分析"
+
+  - path: "/analysis/calendar"
+    name: "能效日历"
+    keywords: ["能效日历", "COP日历", "每日能效", "日历"]
+    category: "用能分析"
+    description: "月度COP日历、能效评价"
+
+  - path: "/analysis/query"
+    name: "能效查询"
+    keywords: ["能效查询", "SCOP", "能效参数", "能效"]
+    category: "用能分析"
+    description: "SCOP等能效参数查询和趋势"
+
+  - path: "/analysis/rank"
+    name: "能耗排名"
+    keywords: ["能耗排名", "排名", "最耗电", "设备排名"]
+    category: "用能分析"
+    description: "设备/区域能耗排名和同比"
+
+  - path: "/analysis/load-forecast"
+    name: "负荷预测"
+    keywords: ["负荷预测", "预测", "冷负荷"]
+    category: "用能分析"
+    description: "AI冷负荷预测（今日/昨日/上周）"
+
+  # 智慧运维类（3个）
+  - path: "/smart-maintenance/equipment-operation"
+    name: "设备运行"
+    keywords: ["设备运行", "设备", "冷水机组", "水泵", "冷却塔", "设备参数"]
+    category: "智慧运维"
+    description: "设备树、设备详情（信息/运行数据/蒸发器/冷凝器/报警/趋势）"
+
+  - path: "/smart-maintenance/work-order-management"
+    name: "工单管理"
+    keywords: ["工单管理", "工单", "维修", "保养", "巡检"]
+    category: "智慧运维"
+    description: "维修/保养/巡检工单列表"
+
+  - path: "/smart-maintenance/task-management"
+    name: "任务管理"
+    keywords: ["任务管理", "任务", "巡检任务", "保养任务"]
+    category: "智慧运维"
+    description: "巡检/保养任务管理"
+
+  # 智能算法类（2个）
+  - path: "/blockchain/optimization"
+    name: "主动寻优"
+    keywords: ["主动寻优", "寻优", "AI优化", "节能", "能效提升"]
+    category: "智能算法"
+    description: "RL寻优过程、最优点参数、节能贡献率、设备状态"
+
+  - path: "/blockchain/data-monitor"
+    name: "数据公信"
+    keywords: ["数据公信", "区块链", "数据上链"]
+    category: "智能算法"
+    description: "区块链上链数据查询"
+
+  # 报告报表类（2个）
+  - path: "/report-center/custom"
+    name: "自定义报表"
+    keywords: ["自定义报表", "自定义", "报表"]
+    category: "报告报表"
+    description: "自定义时间段和间隔的报表"
+
+  - path: "/report-center/manage"
+    name: "报表管理"
+    keywords: ["报表管理", "报表", "下载报表", "运维报表"]
+    category: "报告报表"
+    description: "系统生成的运维/用能报表列表（可下载）"
+
+  # 报警类（2个）
+  - path: "/alarm/realtime"
+    name: "实时报警"
+    keywords: ["实时报警", "报警", "故障", "告警"]
+    category: "报警管理"
+    description: "当前活跃报警列表（可按区域/类型/等级筛选）"
+
+  - path: "/alarm/history"
+    name: "历史报警"
+    keywords: ["历史报警", "报警记录", "报警历史"]
+    category: "报警管理"
+    description: "历史报警记录（含恢复时间）"
+
+  # 数据大屏类（5个）
+  - path: "/data-overview/home"
+    name: "数据总览"
+    keywords: ["数据总览", "全厂监控", "总览大屏"]
+    category: "数据大屏"
+    description: "全厂能耗监控、分区域能耗、光伏直驱、空调能耗"
+
+  - path: "/data-overview/screen"
+    name: "综合大屏"
+    keywords: ["综合大屏", "大屏", "绿电占比"]
+    category: "数据大屏"
+    description: "绿电占比、碳减排、光伏/风力/储能月累计"
+
+  - path: "/data-overview/deviceMonitor"
+    name: "设备监控大屏"
+    keywords: ["设备监控大屏", "设备大屏", "空调监控"]
+    category: "数据大屏"
+    description: "综合楼空调设备按楼层状态监控"
+
+  - path: "/data-overview/pvPower"
+    name: "光伏大屏"
+    keywords: ["光伏大屏", "发电大屏", "光伏发电"]
+    category: "数据大屏"
+    description: "光伏发电量/收益、设备状态、环境参数"
+
+  - path: "/data-overview/energy"
+    name: "能源大屏"
+    keywords: ["能源大屏", "储能大屏", "储能系统"]
+    category: "数据大屏"
+    description: "储能系统拓扑、5堆SOC/充放电、负荷曲线"
+
+# 受限路由（需要项目上下文/权限，共10个）
+# 这些页面在无上下文访问时会重定向至 /fucaView
+restricted_routes:
+  - path: "/integrated-monitor/conditioning-terminal"
+    name: "冷水机房"
+    keywords: ["冷水机房", "冷机房", "机房监控"]
+    reason: "需要选择项目后查看"
+
+  - path: "/integrated-monitor/air-device-monitor"
+    name: "办公楼空调"
+    keywords: ["办公楼空调", "办公楼", "空调"]
+    reason: "需要选择项目后查看"
+
+  - path: "/integrated-monitor/production-device-monitor"
+    name: "生产厂房空调"
+    keywords: ["生产厂房空调", "生产厂房", "厂房空调"]
+    reason: "需要选择项目后查看"
+
+  - path: "/smart-maintenance/health"
+    name: "健康诊断"
+    keywords: ["健康诊断", "诊断"]
+    reason: "需要权限或项目未选择"
+
+  - path: "/report-center/energy"
+    name: "能源报告"
+    keywords: ["能源报告"]
+    reason: "功能可能未完全实现"
+
+  - path: "/cockpit"
+    name: "驾驶舱"
+    keywords: ["驾驶舱"]
+    reason: "已合并到 /fucaView"
+
+  - path: "/carbon/carbon-overview"
+    name: "碳排总览"
+    keywords: ["碳排总览", "碳排", "碳排放"]
+    reason: "碳排模块可能需要单独配置"
+
+  - path: "/carbon/carbon-detail"
+    name: "碳排明细"
+    keywords: ["碳排明细", "碳排详情"]
+    reason: "碳排模块可能需要单独配置"
+
+  - path: "/carbon/carbon-distribution"
+    name: "碳排分布"
+    keywords: ["碳排分布"]
+    reason: "碳排模块可能需要单独配置"
+
+  - path: "/ai/assistant"
+    name: "AI助手"
+    keywords: ["AI助手", "助手"]
+    reason: "AI模块可能需要单独启用"
+
+
+
