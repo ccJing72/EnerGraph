@@ -4,7 +4,7 @@
 
 ## 功能
 
-- **HVAC 专家问答**：5613 条暖通空调专业语料（规范查询、能效计算、故障诊断、节能优化），RAG 检索驱动，低置信度自动拒答，引用来源标注
+- **HVAC 专家问答**：5605 条暖通空调专业语料（规范查询、能效计算、故障诊断、节能优化），RAG 检索驱动，低置信度自动拒答，引用来源标注
 - **RAG 质量优化**：distance 阈值过滤 + 余弦相似度 MMR 去重（0.98 阈值）+ source_snippets 引用来源
 - **多意图识别**：单输入多意图自动拆分，cognitive_parser 并行/串行调度，interpreter 分段报告输出
 - **Action Agent**：理解自然语言意图 → 调用 Java 后端监控 API → 流式返回文字总结 + 页面跳转信号
@@ -54,7 +54,10 @@ uvicorn src.services.api:app --reload
 ```
 EnerGraph/
 ├── config/
-│   └── agent_config.yaml          # 默认配置（.env 优先覆盖）
+│   ├── agent_config.yaml          # 默认配置（.env 优先覆盖）
+│   └── routes.yaml                # 前端路由注册表（24 可访问 + 10 受限）
+├── scripts/
+│   └── fix_qa_mismatch.py         # 数据修复工具
 ├── docs/                          # 各阶段开发规划
 │   ├── plan_skills_refactor.md    # Skills 架构重组方案
 │   ├── plan_skills_base_class.md  # BaseSkill 基类方案
@@ -63,7 +66,10 @@ EnerGraph/
 │   ├── plan_phase4_realapi.md
 │   ├── plan_phase5_voice.md
 │   ├── plan_phase6_visualization_export.md
-│   └── plan_phase7_multi_intent.md
+│   ├── plan_phase7_multi_intent.md
+│   ├── plan_fix_navigation_routes.md   # 路由修复计划
+│   ├── frontend_backend_alignment.md   # 前后端对接文档
+│   └── sync_server.md                  # 服务器同步指南
 ├── src/
 │   ├── config/
 │   │   ├── settings.py            # 统一配置加载（LLM_PROVIDER 切换）
@@ -75,7 +81,7 @@ EnerGraph/
 │   │   ├── base_skill.py          # BaseSkill 抽象基类（execute/生命周期钩子）
 │   │   ├── hvac_expert_skill.py   # HVAC 专家问答（置信度判断/拒答/引用）
 │   │   ├── energy_dispatch_skill.py
-│   │   ├── ui_router_skill.py     # 页面跳转控制（infer_navigation SOP）
+│   │   ├── ui_router_skill.py     # 页面跳转控制（RouteRegistry 路由匹配）
 │   │   └── v3_interpreter_skill.py
 │   ├── tools/                     # 原子执行层（确定性函数，不含 Prompt）
 │   │   ├── query_hvac_knowledge.py # HVAC RAG 检索（ChromaDB + 去重 + 阈值）
@@ -90,14 +96,15 @@ EnerGraph/
 │   ├── services/
 │   │   └── api.py                 # FastAPI SSE（/invoke + /stream）
 │   ├── pipelines/
-│   │   └── rag_ingest.py          # HVAC 语料入库
+│   │   │   └── rag_ingest.py          # HVAC 语料入库（bge-small-zh-v1.5）
 │   ├── frontend/
 │   │   └── app.py                 # Streamlit 演示前端
 │   └── tests/
 │       ├── test_action_agent.py   # /stream 集成测试（3 tests）
 │       ├── test_base_skill.py     # BaseSkill 基类契约测试（15 tests）
 │       ├── test_hvac_quality.py   # RAG 质量测试（19 tests）
-│       └── test_multi_intent.py   # 多意图识别测试（16 tests）
+│       ├── test_multi_intent.py      # 多意图识别测试（16 passed）
+│       └── test_ui_router_skill.py   # 路由匹配单元测试（4 passed）
 ├── data/hvac_knowledge/           # ChromaDB 向量库（rag_ingest 后生成）
 ├── CLAUDE.md                      # AI 协作规范（每次 session 自动加载）
 └── AI_CONTEXT.md                  # 项目单点真相
@@ -109,8 +116,8 @@ EnerGraph/
 |------|------|
 | 核心框架 | LangGraph 1.2，ReAct 状态图 |
 | LLM | DeepSeek V4 / OpenAI / Claude（`LLM_PROVIDER` 切换） |
-| Embedding | ChromaDB ONNX（all-MiniLM-L6-v2，本地，零 API 依赖） |
-| 向量库 | ChromaDB 本地持久化，5613 条 HVAC 语料 |
+| Embedding | BAAI/bge-small-zh-v1.5（SentenceTransformers，中文优化，本地模型） |
+| 向量库 | ChromaDB 本地持久化，5605 条 HVAC 语料 |
 | API 层 | FastAPI + SSE 流式（Phase 2） |
 | 前端对接 | Vue3 + Vite + TypeScript（福加监控平台） |
 | 演示前端 | Streamlit 1.39 |
