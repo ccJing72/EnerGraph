@@ -19,18 +19,85 @@ Prompt keys（src/config/prompts.yaml）：
   - action_agent_nav_hint : 路由表 + 跳转时机判断指令
 """
 import logging
+from difflib import SequenceMatcher
 from typing import Any, Dict, List, Optional, Tuple
 
+from src.config.settings import settings
 from src.schemas.action_agent import UIAction
 from src.skills.base_skill import BaseSkill
 
 logger = logging.getLogger(__name__)
 
+
+class RouteRegistry:
+    """路由注册表管理器，从 config/routes.yaml 加载路由映射。"""
+
+    def __init__(self):
+        """初始化路由注册表，从 settings.routes 加载。"""
+        routes_config = settings.routes
+        self.accessible = routes_config.get("accessible_routes", [])
+        self.restricted = routes_config.get("restricted_routes", [])
+
+    def find_route(self, keyword: str) -> Dict[str, Any]:
+        """根据关键词模糊匹配路由。
+
+        Args:
+            keyword: 用户输入的页面描述（如"能源监控"、"工单列表"）
+
+        Returns:
+            匹配结果字典:
+            {
+                "path": "/integrated-monitor/energy-monitor",
+                "name": "能源监控",
+                "is_restricted": False,
+                "restriction_reason": None
+            }
+            或 {"error": "未找到匹配的页面: xxx"}
+        """
+        best_match = None
+        best_score = 0.0
+
+        # 先匹配可访问路由
+        for route in self.accessible:
+            for kw in route.get("keywords", []):
+                score = SequenceMatcher(None, keyword, kw).ratio()
+                if score > best_score:
+                    best_score = score
+                    best_match = {
+                        "path": route["path"],
+                        "name": route["name"],
+                        "is_restricted": False,
+                        "restriction_reason": None,
+                    }
+
+        # 再匹配受限路由
+        for route in self.restricted:
+            for kw in route.get("keywords", []):
+                score = SequenceMatcher(None, keyword, kw).ratio()
+                if score > best_score:
+                    best_score = score
+                    best_match = {
+                        "path": route["path"],
+                        "name": route["name"],
+                        "is_restricted": True,
+                        "restriction_reason": route["reason"],
+                    }
+
+        if best_score < 0.6:  # 相似度阈值
+            return {"error": f"未找到匹配的页面: {keyword}"}
+
+        return best_match
+
+
+# 全局单例
+_route_registry = RouteRegistry()
+
+
 # 工具 → 路由映射（Java 后端工具自动推断跳转目标）
 _TOOL_ROUTE_MAP: Dict[str, str] = {
-    "fetch_cop_data": "/chiller-room",
-    "fetch_energy_summary": "/energy-monitor",
-    "fetch_active_alarms": "/alarms",
+    "fetch_cop_data": "/smart-maintenance/equipment-operation",
+    "fetch_energy_summary": "/analysis/consumption-panel",
+    "fetch_active_alarms": "/alarm/realtime",
 }
 
 
