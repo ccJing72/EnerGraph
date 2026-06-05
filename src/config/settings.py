@@ -59,6 +59,42 @@ class AppConfig(BaseModel):
     rag: RAGConfig = Field(default_factory=RAGConfig)
     tools: List[ToolDef] = Field(default_factory=list)
     output: OutputConfig = Field(default_factory=OutputConfig)
+    prompts: Dict[str, Any] = Field(default_factory=dict)
+    routes: Dict[str, Any] = Field(default_factory=dict)
+
+    class Config:
+        """允许任意类型字段"""
+        arbitrary_types_allowed = True
+
+
+def _load_prompts() -> Dict[str, Any]:
+    """加载 Prompts 配置文件"""
+    prompts_path = _PROJECT_ROOT / "src" / "config" / "prompts.yaml"
+    if not prompts_path.exists():
+        print(f"[WARNING] Prompts 配置文件不存在: {prompts_path}")
+        return {}
+
+    try:
+        with open(prompts_path, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except (yaml.YAMLError, OSError) as e:
+        print(f"[WARNING] 无法加载 Prompts 文件: {e}")
+        return {}
+
+
+def _load_routes() -> Dict[str, Any]:
+    """加载路由注册表配置"""
+    routes_path = _PROJECT_ROOT / "config" / "routes.yaml"
+    if not routes_path.exists():
+        print(f"[WARNING] 路由配置文件不存在: {routes_path}")
+        return {}
+
+    try:
+        with open(routes_path, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except (yaml.YAMLError, OSError) as e:
+        print(f"[WARNING] 无法加载路由文件: {e}")
+        return {}
 
 
 def _load_yaml_config(yaml_path: Optional[Path] = None) -> Dict[str, Any]:
@@ -115,10 +151,15 @@ def _apply_env_overrides(config: Dict[str, Any]) -> Dict[str, Any]:
 def create_settings(yaml_path: Optional[Path] = None) -> AppConfig:
     """创建应用配置实例
 
-    加载顺序: YAML 文件 → 环境变量覆盖 → Pydantic 验证
+    加载顺序: YAML 文件 → 环境变量覆盖 → Pydantic 验证 → Prompts & Routes
     """
     raw = _load_yaml_config(yaml_path)
     raw = _apply_env_overrides(raw)
+
+    # 加载 prompts 和 routes
+    raw["prompts"] = _load_prompts()
+    raw["routes"] = _load_routes()
+
     return AppConfig(**raw)
 
 
