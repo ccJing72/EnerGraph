@@ -32,7 +32,9 @@ if "chat_history" not in st.session_state:
 # 侧边栏
 with st.sidebar:
     st.header("配置")
-    target_date = st.text_input("目标日期（调度场景）", value="2026-05-15")
+    from datetime import datetime
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    target_date = st.text_input("目标日期（调度场景）", value=current_date)
     datacenter_id = st.text_input("数据中心 ID（AIDC 场景）", value="Mock 假数据")
     st.divider()
     st.markdown("**平台专属**")
@@ -116,7 +118,13 @@ if user_input:
             tools_have_run = False  # 追踪工具是否已执行，用于控制流式内容路由
 
             for event in graph.stream(
-                {"user_input": full_input},
+                {
+                    "user_input": full_input,
+                    "page_context": {
+                        "current_route": "/index/index",
+                        "site_id": "FJJB000001",  # 江北工厂站点ID
+                    }
+                },
                 stream_mode=["updates", "messages"],
             ):
                 mode, data = event
@@ -195,7 +203,33 @@ if user_input:
                         st.markdown(f"- {item}")
                     st.divider()
 
-            # 2. 工具调用详情 / RAG 来源（在回答上方）
+            # 2. 页面跳转建议（Phase 2）
+            pending_actions = result.get("pending_actions", [])
+            if pending_actions:
+                with st.container():
+                    st.markdown("**🔗 Agent 建议跳转：**")
+                    for action in pending_actions:
+                        if isinstance(action, dict):
+                            route = action.get("route", "")
+                            params = action.get("params", {})
+                        else:
+                            route = action.route
+                            params = action.params
+
+                        # 路由名称映射
+                        route_names = {
+                            "/analysis/consumption-panel": "能耗分析面板",
+                            "/smart-maintenance/equipment-operation": "设备运行监控",
+                            "/alarm/realtime": "实时报警",
+                        }
+                        route_name = route_names.get(route, route)
+
+                        param_str = ", ".join([f"{k}={v}" for k, v in params.items()])
+                        st.info(f"🎯 **{route_name}** ({route})\n\n参数: {param_str}")
+                    st.markdown("💡 *在福加网页中，Agent 会自动执行跳转*")
+                    st.divider()
+
+            # 3. 工具调用详情 / RAG 来源（在回答上方）
             details = {}
             if result.get("hvac_knowledge"):
                 details["📚 HVAC 知识库检索"] = result["hvac_knowledge"]
@@ -241,4 +275,4 @@ if user_input:
         st.rerun()
 
 st.markdown("---")
-st.caption("Phase 1/2/3/7 Demo · HVAC 知识库 5613 条 · V3 引擎为 Mock 数据 · 支持多意图识别")
+st.caption("Phase 1/2/3/7 Demo · HVAC 知识库 5605 条 · 已接入福加真实 API（能耗查询）· 支持多意图识别 + 自动跳转建议")
