@@ -15,6 +15,13 @@ import streamlit as st
 
 from src.graph.builder import graph
 
+# 路由名称映射（共用于建议框和链接生成）
+_ROUTE_NAMES = {
+    "/analysis/consumption-panel": "能耗分析面板",
+    "/smart-maintenance/equipment-operation": "设备运行监控",
+    "/alarm/realtime": "实时报警",
+}
+
 st.set_page_config(page_title="青山 V3 多模态调度 Agent", layout="wide")
 st.title("青山 V3 多模态调度 Agent")
 st.caption("暖通空调专家问答 · 能源调度分析 · 基于 QingShan-TimeDiT + PhysicsAI")
@@ -216,13 +223,7 @@ if user_input:
                             route = action.route
                             params = action.params
 
-                        # 路由名称映射
-                        route_names = {
-                            "/analysis/consumption-panel": "能耗分析面板",
-                            "/smart-maintenance/equipment-operation": "设备运行监控",
-                            "/alarm/realtime": "实时报警",
-                        }
-                        route_name = route_names.get(route, route)
+                        route_name = _ROUTE_NAMES.get(route, route)
 
                         param_str = ", ".join([f"{k}={v}" for k, v in params.items()])
                         st.info(f"🎯 **{route_name}** ({route})\n\n参数: {param_str}")
@@ -257,11 +258,13 @@ if user_input:
             # 4. 页面跳转链接（直接添加到回答末尾）
             pending_actions = result.get("pending_actions", [])
             if pending_actions:
-                action = pending_actions[0]
-                route = action.route if hasattr(action, "route") else action.get("route", "")
-                if route:
+                links = []
+                for action in pending_actions:
+                    route = action.route if hasattr(action, "route") else action.get("route", "")
+                    name = _ROUTE_NAMES.get(route, route)
                     full_url = f"https://aiot-fuca.com{route}"
-                    final += f"\n\n---\n\n💡 **查看详细数据**：[点击跳转到能耗分析页面]({full_url})"
+                    links.append(f"[{name}]({full_url})")
+                final += f"\n\n---\n\n💡 **查看详细数据**：{' · '.join(links)}"
 
             answer_ph.markdown(final)
 

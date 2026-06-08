@@ -226,7 +226,7 @@ EnerGraph/
 | Phase 2 | Action Agent：FastAPI SSE + UIAction 跳转信号 + Java 后端工具 | ✅ 完成 | `docs/plan_phase2_action_agent.md` |
 | Skills 基类 | BaseSkill 抽象基类 + 生命周期钩子 + 统一调度 | ✅ 完成 | `docs/plan_skills_base_class.md` |
 | Phase 3 | RAG 质量优化（相关度阈值 + 拒答 + 引用来源） | ✅ 完成 | `docs/plan_phase3_rag.md` |
-| Phase 4 | Mock → 真实预测 API（TimeDiT / PhysicsAI / AIDC）+ Java 后端真实对接 | 待开始 | `docs/plan_phase4_realapi.md` |
+| Phase 4 | Mock → 真实预测 API（TimeDiT / PhysicsAI / AIDC）+ Java 后端真实对接（能耗查询已接入福加真实 API） | 部分完成（能耗真实API已接入，COP/报警仍为Mock） | `docs/plan_phase4_realapi.md` |
 | Phase 5 | 语音助手（Whisper STT + TTS） | 待开始 | `docs/plan_phase5_voice.md` |
 | Phase 6 | 数据可视化 + 报表导出（表格/图表/CSV 下载） | 待开始 | `docs/plan_phase6_visualization_export.md` |
 | Phase 7 | 多意图识别与拆分执行（单输入多意图 + 分段报告） | ✅ 完成 | `docs/plan_phase7_multi_intent.md` |
@@ -247,7 +247,8 @@ EnerGraph/
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
-| 2026-06-08 | Phase 4 部分完成：接入福加真实API（fetch_energy_summary），配置site_mapping.yaml站点映射，修复Streamlit跳转链接显示问题（pending_actions被st.rerun()清除），测试文件规范化（移至src/tests/） | Claude Sonnet 4.6 |
+| 2026-06-08 | Phase 4 部分完成：接入福加真实API（fetch_energy_summary），配置site_mapping.yaml站点映射，修复Streamlit跳转链接显示问题（pending_actions被st.rerun()清除），测试文件规范化（移至src/tests/） | 魏博源 |
+| 2026-06-08 | 修复：UIRouterSkill 支持多意图多跳转链接（返回 List[UIAction]），前端动态名称 + 多链接展示；修复 fetch_cop_data/fetch_active_alarms 因残存 JAVA_API_BASE_URL 引用导致异常（改为纯 Mock fallback）；清理 java_backend.py 调试日志 | 魏博源 |
 | 2026-06-05 | RAG 质量修复：删除8条重复含湿量问答、优化回答格式、切换 embedding 模型为 BAAI/bge-small-zh-v1.5（中文HVAC专业术语匹配大幅提升） | 魏博源 |
 | 2026-06-05 | 修复 query_hvac_knowledge NumPy 数组布尔判断错误 + Agent 导航功能修复 | 魏博源 |
 | 2026-06-04 | 代码规范审计修复：11 个 __init__.py 补充标准 docstring、graph/nodes.py 和 services/api.py 补充返回值类型标注和 Args/Returns docstring、CLAUDE.md 补充 skills/services/memory/tests 层名枚举 | 魏博源 |

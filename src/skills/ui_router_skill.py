@@ -20,7 +20,7 @@ Prompt keys（src/config/prompts.yaml）：
 """
 import logging
 from difflib import SequenceMatcher
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 from src.config.settings import settings
 from src.schemas.action_agent import UIAction
@@ -136,52 +136,59 @@ class UIRouterSkill(BaseSkill):
         Returns:
             AgentState 更新字典（pending_actions），无匹配时返回空
         """
-        action = self._infer_navigation(tool_results)
-        if action is not None:
-            logger.info(f"[DEBUG] UIRouterSkill 生成 pending_actions: {action}")
-            return {"pending_actions": [action]}
+        actions = self._infer_navigation(tool_results)
+        if actions:
+            logger.info(f"[DEBUG] UIRouterSkill 生成 {len(actions)} 个跳转: {actions}")
+            return {"pending_actions": actions}
         logger.info(f"[DEBUG] UIRouterSkill 未生成跳转")
         return {}
 
     @staticmethod
     def _infer_navigation(
         tool_results: List[Tuple[str, Dict[str, Any], Dict[str, Any]]],
-    ) -> Optional[UIAction]:
+    ) -> List[UIAction]:
         """SOP 核心：根据本轮工具调用结果推断页面跳转。
 
         优先级：
           1. LLM 显式调用了 navigate_to_page → 原样采用
           2. LLM 调用了 Java 后端工具 → 根据工具类型自动映射路由
 
-        仅返回零或一个 UIAction，避免重复跳转。
+        支持多意图场景，可返回多个 UIAction（按工具调用顺序排列）。
+        相同路由只保留第一个，避免重复跳转。
 
         Args:
             tool_results: [(tool_name, result_dict, args_dict), ...]
 
         Returns:
-            UIAction 或 None
+            UIAction 列表，无匹配时返回空列表
         """
+        seen_routes = set()
+        actions: List[UIAction] = []
+
         # 优先：LLM 显式调用了 navigate_to_page
         for name, result, args in tool_results:
             if name == "navigate_to_page" and "error" not in result:
                 try:
                     action = UIAction(**result)
-                    logger.info(
-                        f"UIRouterSkill: 采用 LLM 显式跳转 → {action.route}"
-                    )
-                    return action
+                    if action.route not in seen_routes:
+                        seen_routes.add(action.route)
+                        actions.append(action)
+                        logger.info(
+                            f"UIRouterSkill: 采用 LLM 显式跳转 → {action.route}"
+                        )
                 except Exception as e:
                     logger.warning(f"UIRouterSkill: navigate_to_page 结果解析失败: {e}")
 
-        # 兜底：Java 后端工具 → 自动推断跳转路由
+        # 兜底：Java 后端工具 → 自动推断跳转路由（跳过已存在路由）
         for name, result, args in tool_results:
             route = _TOOL_ROUTE_MAP.get(name)
-            if route and "error" not in result:
+            if route and "error" not in result and route not in seen_routes:
+                seen_routes.add(route)
                 params = {k: v for k, v in args.items() if v is not None}
                 action = UIAction(type="navigate", route=route, params=params)
+                actions.append(action)
                 logger.info(
                     f"UIRouterSkill: 根据 {name} 自动推断跳转 → {route}"
                 )
-                return action
 
-        return None
+        return actions

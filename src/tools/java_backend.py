@@ -53,18 +53,7 @@ def fetch_cop_data(site_id: str, chiller_id: str = "CH-01") -> Dict[str, Any]:
         COPData 的 dict 表示
     """
     try:
-        if not _is_mock():
-            # Phase 4: 真实 HTTP 调用
-            import httpx
-            resp = httpx.get(
-                f"{JAVA_API_BASE_URL}/cop",
-                params={"site_id": site_id, "chiller_id": chiller_id},
-                timeout=10,
-            )
-            resp.raise_for_status()
-            return COPData(**resp.json()).model_dump()
-
-        # Mock fallback
+        # Mock fallback（COP 真实 API 待福加平台提供后接入）
         return COPData(
             site_id=site_id,
             chiller_id=chiller_id,
@@ -93,14 +82,8 @@ def fetch_energy_summary(site_id: str, date: str) -> Dict[str, Any]:
     Returns:
         EnergySummary 的 dict 表示
     """
-    # 调试日志
-    logger.info(f"[DEBUG] fetch_energy_summary 被调用")
-    logger.info(f"[DEBUG] FUCA_API_BASE_URL = {FUCA_API_BASE_URL}")
-    logger.info(f"[DEBUG] _is_mock() = {_is_mock()}")
-
     try:
         if not _is_mock():
-            logger.info(f"[DEBUG] 使用真实 API 调用")
             import httpx
 
             # 加载站点配置
@@ -157,8 +140,7 @@ def fetch_energy_summary(site_id: str, date: str) -> Dict[str, Any]:
                 carbon_reduction_kg=api_data.get("totalEnergy", 0.0) * api_data.get("carbonCoefficient", 0.0),
             ).model_dump()
 
-        # Mock fallback
-        logger.info(f"[DEBUG] 使用 Mock 数据")
+        # Mock fallback（当未配置 FUCA_API_BASE_URL 或 API 调用失败时）
         total = round(random.uniform(8000, 15000), 1)
         pv = round(random.uniform(1500, 4000), 1)
         grid = round(total - pv + random.uniform(-500, 500), 1)
@@ -191,22 +173,7 @@ def fetch_active_alarms(site_id: str) -> Dict[str, Any]:
         AlarmList 的 dict 表示
     """
     try:
-        if not _is_mock():
-            import httpx
-            resp = httpx.get(
-                f"{JAVA_API_BASE_URL}/alarms",
-                params={"site_id": site_id},
-                timeout=10,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            return AlarmList(
-                site_id=data["site_id"],
-                total_count=data["total_count"],
-                alarms=[AlarmItem(**a) for a in data.get("alarms", [])],
-            ).model_dump()
-
-        # Mock fallback
+        # Mock fallback（报警真实 API 待福加平台提供后接入）
         mock_alarms = [
             AlarmItem(
                 alarm_id=f"ALM-{site_id}-001",
