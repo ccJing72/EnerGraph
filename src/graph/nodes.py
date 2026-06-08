@@ -104,6 +104,11 @@ def cognitive_parser_node(state: AgentState) -> Dict[str, Any]:
         prompts = _load_prompts()
         system_content = prompts.get("cognitive_parser", {}).get("system", "")
 
+        # 注入当前日期
+        from datetime import datetime
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        system_content += f"\n\n## 当前时间\n当前日期：{current_date}"
+
         page_context = state.get("page_context")
         if page_context is not None:
             if hasattr(page_context, "current_route"):
