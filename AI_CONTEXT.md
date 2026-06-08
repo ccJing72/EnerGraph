@@ -247,6 +247,7 @@ EnerGraph/
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-08 | Phase 4 部分完成：接入福加真实API（fetch_energy_summary），配置site_mapping.yaml站点映射，修复Streamlit跳转链接显示问题（pending_actions被st.rerun()清除），测试文件规范化（移至src/tests/） | Claude Sonnet 4.6 |
 | 2026-06-05 | RAG 质量修复：删除8条重复含湿量问答、优化回答格式、切换 embedding 模型为 BAAI/bge-small-zh-v1.5（中文HVAC专业术语匹配大幅提升） | 魏博源 |
 | 2026-06-05 | 修复 query_hvac_knowledge NumPy 数组布尔判断错误 + Agent 导航功能修复 | 魏博源 |
 | 2026-06-04 | 代码规范审计修复：11 个 __init__.py 补充标准 docstring、graph/nodes.py 和 services/api.py 补充返回值类型标注和 Args/Returns docstring、CLAUDE.md 补充 skills/services/memory/tests 层名枚举 | 魏博源 |

@@ -138,7 +138,9 @@ class UIRouterSkill(BaseSkill):
         """
         action = self._infer_navigation(tool_results)
         if action is not None:
+            logger.info(f"[DEBUG] UIRouterSkill 生成 pending_actions: {action}")
             return {"pending_actions": [action]}
+        logger.info(f"[DEBUG] UIRouterSkill 未生成跳转")
         return {}
 
     @staticmethod

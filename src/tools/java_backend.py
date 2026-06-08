@@ -93,8 +93,14 @@ def fetch_energy_summary(site_id: str, date: str) -> Dict[str, Any]:
     Returns:
         EnergySummary 的 dict 表示
     """
+    # 调试日志
+    logger.info(f"[DEBUG] fetch_energy_summary 被调用")
+    logger.info(f"[DEBUG] FUCA_API_BASE_URL = {FUCA_API_BASE_URL}")
+    logger.info(f"[DEBUG] _is_mock() = {_is_mock()}")
+
     try:
         if not _is_mock():
+            logger.info(f"[DEBUG] 使用真实 API 调用")
             import httpx
 
             # 加载站点配置
@@ -152,6 +158,7 @@ def fetch_energy_summary(site_id: str, date: str) -> Dict[str, Any]:
             ).model_dump()
 
         # Mock fallback
+        logger.info(f"[DEBUG] 使用 Mock 数据")
         total = round(random.uniform(8000, 15000), 1)
         pv = round(random.uniform(1500, 4000), 1)
         grid = round(total - pv + random.uniform(-500, 500), 1)

@@ -253,6 +253,16 @@ if user_input:
 
             # 3. 最终回答
             final = answer_text or result.get("final_report", "（无回答）")
+
+            # 4. 页面跳转链接（直接添加到回答末尾）
+            pending_actions = result.get("pending_actions", [])
+            if pending_actions:
+                action = pending_actions[0]
+                route = action.route if hasattr(action, "route") else action.get("route", "")
+                if route:
+                    full_url = f"https://aiot-fuca.com{route}"
+                    final += f"\n\n---\n\n💡 **查看详细数据**：[点击跳转到能耗分析页面]({full_url})"
+
             answer_ph.markdown(final)
 
             if result.get("error"):
