@@ -60,6 +60,10 @@ models/
 tmp/
 temp/
 
+# Claude Code / Codegraph 工具内部目录
+.claude/
+.codegraph/
+
 # Large data files & local docs
 *.jsonl
 *.docx
