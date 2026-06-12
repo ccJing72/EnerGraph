@@ -254,9 +254,6 @@ if user_input:
             details = {}
             if result.get("hvac_knowledge"):
                 details["📚 HVAC 知识库检索"] = result["hvac_knowledge"]
-            if result.get("timedit_data"):
-            if result.get("physics_verification"):
-            if result.get("aidc_cooling"):
             if result.get("constraints"):
                 details["🎯 意图解析（ConstraintMatrix）"] = result["constraints"]
 
