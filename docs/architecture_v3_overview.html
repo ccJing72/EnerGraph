@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>青山大模型 V3.0 五层架构 — EnerGraph 项目全景</title>
+<style>
+  :root {
+    --bg: #fafbfc; --card: #ffffff; --border: #e2e8f0; --text: #1a202c; --text2: #64748b; --text3: #94a3b8;
+    --purple: #7c3aed; --pink: #db2777; --blue: #2563eb; --green: #059669; --slate: #64748b;
+    --orange: #d97706; --red: #dc2626;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+
+  .page { max-width: 1100px; margin: 0 auto; padding: 32px 24px 48px; }
+
+  /* Header */
+  .header { text-align: center; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 2px solid var(--border); }
+  .header h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+  .header .sub { font-size: 14px; color: var(--text2); margin-top: 6px; }
+  .header .meta { font-size: 12px; color: var(--text3); margin-top: 8px; display: flex; gap: 16px; justify-content: center; }
+
+  /* Legend */
+  .legend { display: flex; gap: 16px; justify-content: center; margin-bottom: 24px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text2); }
+  .tag { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 600; letter-spacing: 0.3px; }
+  .t-done { background: #dcfce7; color: #166534; } .t-mock { background: #fef3c7; color: #92400e; }
+  .t-plan { background: #dbeafe; color: #1e40af; } .t-future { background: #f3e8ff; color: #6b21a8; }
+  .t-not { background: #f1f5f9; color: #64748b; } .t-core { background: #2563eb; color: #fff; }
+
+  /* Architecture layers */
+  .arch { margin-bottom: 32px; }
+  .layer { background: var(--card); border: 2px solid var(--border); border-radius: 12px; padding: 18px 20px; margin-bottom: 8px; position: relative; }
+  .layer-label { position: absolute; top: -10px; left: 16px; font-size: 10px; font-weight: 700; padding: 2px 10px; border-radius: 4px; color: #fff; }
+  .layer-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .layer-title { font-size: 16px; font-weight: 700; }
+  .layer-desc { font-size: 12px; color: var(--text2); line-height: 1.7; }
+
+  .l5 { border-color: #c4b5fd; } .l5 .layer-label { background: var(--purple); }
+  .l4 { border-color: #f9a8d4; border-style: dashed; } .l4 .layer-label { background: var(--pink); }
+  .l3 { border-color: #93c5fd; border-width: 3px; background: linear-gradient(135deg, rgba(37,99,235,0.02), rgba(37,99,235,0.06)); } .l3 .layer-label { background: var(--blue); }
+  .l2 { border-color: #6ee7b7; } .l2 .layer-label { background: var(--green); }
+  .l1 { border-color: #cbd5e1; } .l1 .layer-label { background: var(--slate); }
+
+  .arr-row { text-align: center; font-size: 16px; color: var(--text3); margin: -2px 0; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .arr-badge { font-size: 10px; background: var(--card); color: var(--text2); padding: 2px 10px; border-radius: 12px; border: 1px solid var(--border); font-weight: 600; }
+
+  /* EnerGraph detail box */
+  .eg-box { border: 2px solid var(--blue); border-radius: 10px; padding: 14px 16px; margin: 10px 0; background: rgba(37,99,235,0.03); }
+  .eg-title { font-size: 14px; font-weight: 700; color: var(--blue); margin-bottom: 8px; }
+  .flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+  .flow-node { background: #eff6ff; border: 1px solid #93c5fd; border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 600; color: #1e40af; }
+  .flow-arrow { color: #93c5fd; font-weight: 700; }
+  .flow-label { font-size: 10px; color: var(--text2); }
+
+  /* Grid layouts */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .grid-6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+
+  /* Cards */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .card-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+  .card-desc { font-size: 10px; color: var(--text2); line-height: 1.5; }
+  .card-accent-blue { border-left: 3px solid var(--blue); }
+  .card-accent-green { border-left: 3px solid var(--green); }
+  .card-accent-orange { border-left: 3px solid var(--orange); }
+  .card-accent-red { border-left: 3px solid var(--red); }
+  .card-accent-pink { border-left: 3px solid var(--pink); }
+
+  /* Tool list */
+  .tool-row { display: flex; align-items: center; gap: 6px; padding: 3px 0; font-size: 11px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .dot-green { background: #22c55e; } .dot-yellow { background: #f59e0b; } .dot-gray { background: #cbd5e1; }
+
+  /* Model cards */
+  .model { border: 1px solid var(--border); border-radius: 6px; padding: 8px; text-align: center; background: var(--card); }
+  .model-name { font-size: 11px; font-weight: 700; }
+  .model-tech { font-size: 9px; color: var(--text3); margin-top: 2px; }
+  .model-predict { border-top: 3px solid var(--green); }
+  .model-diag { border-top: 3px solid var(--orange); }
+  .model-opt { border-top: 3px solid var(--red); }
+
+  /* Section */
+  .section { margin-top: 36px; }
+  .section-title { font-size: 20px; font-weight: 800; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .section-title .icon { font-size: 22px; }
+
+  /* Timeline */
+  .timeline { position: relative; padding-left: 28px; }
+  .timeline::before { content: ''; position: absolute; left: 10px; top: 4px; bottom: 4px; width: 2px; background: var(--border); }
+  .tl-item { position: relative; margin-bottom: 14px; }
+  .tl-dot { position: absolute; left: -23px; top: 4px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--border); background: var(--card); }
+  .tl-dot.done { background: #22c55e; border-color: #22c55e; }
+  .tl-dot.current { background: var(--blue); border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,0.2); }
+  .tl-dot.planned { background: var(--card); border-color: var(--text3); }
+  .tl-head { font-size: 13px; font-weight: 700; }
+  .tl-desc { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+  /* Agent matrix */
+  .agent-card { border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; background: var(--card); }
+  .agent-card.active { border-color: var(--blue); background: rgba(37,99,235,0.04); box-shadow: 0 0 0 1px rgba(37,99,235,0.1); }
+  .agent-card.planned { opacity: 0.55; }
+  .agent-name { font-size: 13px; font-weight: 700; }
+  .agent-desc { font-size: 10px; color: var(--text2); margin-top: 2px; }
+  .agent-skills { font-size: 9px; color: var(--text3); margin-top: 6px; text-align: left; line-height: 1.6; }
+
+  /* Data layer detail */
+  .sensor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 8px 0; }
+  .sensor { font-size: 10px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 5px; background: var(--card); }
+  .sensor strong { font-size: 10px; display: block; margin-bottom: 1px; }
+  .sensor span { color: var(--text3); }
+
+  /* Self-evolving detail */
+  .evo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .evo-card { border: 1px dashed #f9a8d4; border-radius: 8px; padding: 12px; background: rgba(219,39,119,0.02); }
+  .evo-title { font-size: 12px; font-weight: 700; color: var(--pink); margin-bottom: 4px; }
+  .evo-desc { font-size: 10px; color: var(--text2); line-height: 1.6; }
+
+  /* Guardrails */
+  .guard-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 8px 0; }
+  .guard { border: 1px solid var(--border); border-radius: 6px; padding: 8px; text-align: center; background: var(--card); }
+  .guard-icon { font-size: 20px; margin-bottom: 4px; }
+  .guard-name { font-size: 11px; font-weight: 700; }
+  .guard-desc { font-size: 9px; color: var(--text3); margin-top: 2px; }
+
+  .footnote { text-align: center; font-size: 11px; color: var(--text3); margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); }
+
+  @media print {
+    body { background: #fff; }
+    .page { padding: 16px; max-width: none; }
+    .layer { break-inside: avoid; }
+  }
+  @media (max-width: 768px) {
+    .grid-2, .grid-3, .grid-4, .grid-5, .grid-6 { grid-template-columns: 1fr 1fr; }
+    .sensor-grid { grid-template-columns: 1fr 1fr; }
+    .guard-grid { grid-template-columns: 1fr 1fr 1fr; }
+    .evo-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- Header -->
+<div class="header">
+  <h1>青山大模型 V3.0 五层架构全景</h1>
+  <div class="sub">EnerGraph（青山大模型）— 自演化智能能源 Agent 系统架构</div>
+  <div class="meta">
+    <span>南京福加智能科技有限公司</span>
+    <span>|</span>
+    <span>V3.0 自演化 Agent 战略升级版</span>
+    <span>|</span>
+    <span>最后更新：2026-06-12</span>
+  </div>
+</div>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item"><span class="tag t-done">已实现</span></div>
+  <div class="legend-item"><span class="tag t-mock">Mock 待替换</span></div>
+  <div class="legend-item"><span class="tag t-plan">近期规划</span></div>
+  <div class="legend-item"><span class="tag t-future">中长期演进</span></div>
+  <div class="legend-item"><span class="tag t-not">其他团队负责</span></div>
+</div>
+
+<!-- ===== FIVE-LAYER ARCHITECTURE ===== -->
+<div class="arch">
+
+  <!-- Layer 5: Application -->
+  <div class="layer l5">
+    <span class="layer-label">第 5 层</span>
+    <div class="layer-head">
+      <span class="layer-title">应用层</span>
+      <span class="tag t-not">前端团队负责</span>
+    </div>
+    <div class="layer-desc">
+      <div class="grid-4">
+        <div class="card card-accent-blue"><div class="card-title">Vue.js 前端</div><div class="card-desc">能碳管理平台 Web 端<br>实时数据看板 · 调度交互</div></div>
+        <div class="card card-accent-blue"><div class="card-title">移动 APP</div><div class="card-desc">储能监控 · 异常推送<br>方案审批 · 偏好设置</div></div>
+        <div class="card card-accent-blue"><div class="card-title">语音助手</div><div class="card-desc">Whisper STT + TTS<br>自然语言语音交互</div></div>
+        <div class="card"><div class="card-title">Streamlit 演示 <span class="tag t-done">已有</span></div><div class="card-desc">token 级流式展示<br>ReAct 思考过程可视化</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arr-row">↕</div>
+
+  <!-- Layer 4: Self-Evolving Engine -->
+  <div class="layer l4">
+    <span class="layer-label">第 4 层</span>
+    <div class="layer-head">
+      <span class="layer-title">自演化 Agent 引擎层</span>
+      <span class="tag t-future">未来演进</span>
+      <span style="font-size:11px; color:var(--text2);">— 赋予系统"越用越聪明"的能力</span>
+    </div>
+    <div class="evo-grid">
+      <div class="evo-card">
+        <div class="evo-title">闭环学习引擎</div>
+        <div class="evo-desc">
+          <strong>执行反馈采集器</strong>：Event Sourcing 架构（Kafka + Flink），记录 DecisionEvent / ToolCallEvent / OutcomeEvent / FeedbackEvent<br>
+          <strong>效果评估器</strong>：多维加权评估（收益达成率×0.35 + 安全合规×0.30 + 预测偏差×0.20 + 用户满意度×0.15）<br>
+          <strong>经验提炼器</strong>：CART 决策树规则提取 + LLM 归纳 + BGE-M3 向量嵌入，Airflow DAG 每日批量<br>
+          <strong>能力更新器</strong>：Git 语义版本管理 + 仿真 72h 回测 + 人工审批双重门控
+        </div>
+      </div>
+      <div class="evo-card">
+        <div class="evo-title">技能工厂（Skill Forge）</div>
+        <div class="evo-desc">
+          <strong>L0 原子技能</strong>：单工具调用（如"查询COP"）<br>
+          <strong>L1 组合技能</strong>：多工具编排（如"能效分析"）<br>
+          <strong>L2 场景技能</strong>：完整场景策略（如"储能日内调度"）<br>
+          <strong>L3 自适应技能</strong>：含参数调优和条件分支<br>
+          JSON Schema 标准化定义 · 四级验证流水线（语法→仿真→对抗→A/B灰度）
+        </div>
+      </div>
+      <div class="evo-card">
+        <div class="evo-title">记忆中枢（Memory Hub）</div>
+        <div class="evo-desc">
+          <strong>L0 工作记忆</strong>（Redis）：当前对话状态 · 执行中的方案<br>
+          <strong>L1 短期记忆</strong>（Milvus）：近期调度结果 · 用户反馈<br>
+          <strong>L2 长期记忆</strong>（Neo4j 知识图谱）：技能模板 · 设备拓扑 · 因果关系<br>
+          <strong>L3 反思记忆</strong>（Elasticsearch）：周期性经验归纳 · Dreaming 离线回溯
+        </div>
+      </div>
+      <div class="evo-card">
+        <div class="evo-title">多 Agent 协作网络</div>
+        <div class="evo-desc">
+          <strong>A2A 协议</strong>：JSON-RPC 2.0 消息总线（NATS）<br>
+          <strong>技能共享</strong>：跨 Agent 技能发现与复用<br>
+          <strong>经验广播</strong>：重大异常处置经验全网同步<br>
+          <strong>冲突仲裁</strong>：NSGA-II 多目标帕累托优化<br>
+          <strong>联邦学习</strong>：跨客户技能共享，数据不出域
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arr-row">↕</div>
+
+  <!-- Layer 3: Decision Layer (EnerGraph Core) -->
+  <div class="layer l3">
+    <span class="layer-label">第 3 层</span>
+    <div class="layer-head">
+      <span class="layer-title">青山大模型决策层（编排大脑）</span>
+      <span class="tag t-core">EnerGraph 当前核心</span>
+    </div>
+    <div class="layer-desc" style="margin-bottom:10px;">
+      基座模型：DeepSeek V4 / OpenAI / Claude（<code>LLM_PROVIDER</code> 一键切换） · 未来接入 Qwen3-235B MoE + QLoRA 微调<br>
+      <strong>核心职责：自己不做数值计算</strong>，只负责"决定算什么、怎么组合、怎么呈现给用户"
+    </div>
+
+    <!-- EnerGraph ReAct Loop -->
+    <div class="eg-box">
+      <div class="eg-title">EnerGraph — LangGraph ReAct 状态图</div>
+      <div class="flow">
+        <span class="flow-node">用户输入</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-node" style="background:#dbeafe; font-size:12px;">cognitive_parser</span>
+        <span class="flow-label">LLM 分析意图 · 选择工具（streaming=True）</span>
+      </div>
+      <div class="flow">
+        <span style="width:20px"></span>
+        <span class="flow-label" style="color:var(--green); font-weight:600;">├ 有 tool_calls →</span>
+        <span class="flow-node" style="background:#fef3c7;">v3_engine_router</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-node">执行 Tools / Skills</span>
+        <span class="flow-arrow">→ 循环（最多 max_iterations）</span>
+      </div>
+      <div class="flow">
+        <span style="width:20px"></span>
+        <span class="flow-label" style="color:var(--blue); font-weight:600;">└ 无 tool_calls →</span>
+        <span class="flow-node" style="background:#dcfce7;">interpreter_generator</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-node">Markdown 报告</span>
+        <span class="flow-arrow">→ END</span>
+      </div>
+
+      <!-- Skills -->
+      <div style="margin-top: 12px;">
+        <div style="font-size:12px; font-weight:700; color:var(--blue); margin-bottom:6px;">Skills — 业务推理层（BaseSkill 继承体系）</div>
+        <div class="grid-4">
+          <div class="card card-accent-blue"><div class="card-title">hvac_expert <span class="tag t-done">已实现</span></div><div class="card-desc">HVAC 专家问答<br>ChromaDB RAG 检索</div></div>
+          <div class="card card-accent-blue"><div class="card-title">ui_router <span class="tag t-done">已实现</span></div><div class="card-desc">页面跳转 + 数据查询<br>10 个福加 API 工具编排</div></div>
+          <div class="card card-accent-orange"><div class="card-title">energy_dispatch <span class="tag t-mock">骨架</span></div><div class="card-desc">能源调度综合决策<br>→ PowerAI 核心 Skill</div></div>
+          <div class="card card-accent-orange"><div class="card-title">v3_interpreter <span class="tag t-mock">骨架</span></div><div class="card-desc">数据解读报告<br>多模型结果融合呈现</div></div>
+        </div>
+      </div>
+
+      <!-- Tools -->
+      <div style="margin-top: 12px;">
+        <div style="font-size:12px; font-weight:700; color:var(--blue); margin-bottom:6px;">Tools — 原子执行层（两类接入方式）</div>
+        <div class="grid-2">
+          <div class="card card-accent-green">
+            <div class="card-title" style="color:var(--green);">MCP 协议调用 — 算法模型层 <span class="tag t-mock">当前 Mock</span></div>
+            <div class="card-desc" style="margin-bottom:6px;">算法团队将模型封装为 MCP Server（FastAPI + JSON Schema），Agent 通过 MCP Client 调用</div>
+            <div class="tool-row"><span class="dot dot-yellow"></span>query_timedit → 电负荷预测模型</div>
+            <div class="tool-row"><span class="dot dot-yellow"></span>verify_physics → 设备健康诊断模型</div>
+            <div class="tool-row"><span class="dot dot-yellow"></span>fetch_aidc_cooling → 制冷寻优模型</div>
+            <div class="tool-row"><span class="dot dot-gray"></span><em style="color:#999">光伏 / 冷负荷 / 电价 / 碳排 / 储能调度 → 待接入</em></div>
+          </div>
+          <div class="card card-accent-blue">
+            <div class="card-title" style="color:var(--blue);">REST API 调用 — 福加运营数据 <span class="tag t-done">10 个已实现</span></div>
+            <div class="card-desc" style="margin-bottom:6px;">直接调用福加 Java 后端已有 API，RSA 加密 Token 自动刷新 + 401 自动重试</div>
+            <div class="tool-row"><span class="dot dot-green"></span>fetch_cop_data · fetch_energy_summary</div>
+            <div class="tool-row"><span class="dot dot-green"></span>fetch_active_alarms · fetch_carbon_info</div>
+            <div class="tool-row"><span class="dot dot-green"></span>fetch_photovoltaic_monthly / daily</div>
+            <div class="tool-row"><span class="dot dot-green"></span>fetch_energy_usage · fetch_device_rank</div>
+            <div class="tool-row"><span class="dot dot-green"></span>fetch_environment_params</div>
+            <div class="tool-row"><span class="dot dot-green"></span>fetch_efficiency_calendar / detail</div>
+          </div>
+        </div>
+        <div style="font-size:10px; color:var(--text3); margin-top:6px; text-align:center;">
+          其他 Tools：<span class="tag t-done">query_hvac_knowledge (ChromaDB RAG · 5605条语料)</span> <span class="tag t-done">navigate_to_page</span> <span class="tag t-done">parse_business_intent</span>
+        </div>
+      </div>
+
+      <!-- API Service -->
+      <div style="margin-top:12px;">
+        <div style="font-size:12px; font-weight:700; color:var(--blue); margin-bottom:6px;">API 服务层 <span class="tag t-done">已交付</span></div>
+        <div class="grid-3">
+          <div class="card"><div class="card-title">FastAPI + uvicorn</div><div class="card-desc">GET /health · POST /invoke · POST /stream (SSE)</div></div>
+          <div class="card"><div class="card-title">CORS + Bearer Token</div><div class="card-desc">跨域支持 · 可选鉴权 · run.py 启动脚本</div></div>
+          <div class="card"><div class="card-title">前端对接文档</div><div class="card-desc">Vue.js + TypeScript 示例 · SSE 流式</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arr-row">
+    ↕ <span class="arr-badge">MCP 协议（算法模型）</span> <span class="arr-badge">REST API（运营数据）</span> ↕
+  </div>
+
+  <!-- Layer 2: Algorithm Models -->
+  <div class="layer l2">
+    <span class="layer-label">第 2 层</span>
+    <div class="layer-head">
+      <span class="layer-title">算法模型层 — 9 个纯计算引擎</span>
+      <span class="tag t-mock">Mock · 待算法团队就绪</span>
+    </div>
+    <div class="layer-desc" style="margin-bottom:10px;">
+      每个模型封装为独立的 MCP Server，通过 JSON Schema 描述输入输出接口。Agent 通过 MCP Client 按需调用，支持热插拔新增模型。<br>
+      <strong>模型自身只做数值计算</strong>，不含业务编排和决策逻辑——"算什么"由决策层决定，"怎么算"由模型实现。
+    </div>
+
+    <div style="font-size:11px; font-weight:700; color:var(--green); margin-bottom:6px;">预测类模型（5 个）</div>
+    <div class="grid-5" style="margin-bottom:10px;">
+      <div class="model model-predict"><div class="model-name">电负荷预测</div><div class="model-tech">LSTM+Attention / PatchTST<br>MAPE 5-8%</div></div>
+      <div class="model model-predict"><div class="model-name">光伏出力预测</div><div class="model-tech">CNN-LSTM-Transformer<br>+ 晴空模型物理约束</div></div>
+      <div class="model model-predict"><div class="model-name">电价预测</div><div class="model-tech">Transformer + LightGBM<br>峰谷时段特征工程</div></div>
+      <div class="model model-predict"><div class="model-name">冷负荷预测</div><div class="model-tech">LSTM-XGBoost<br>+ RC 网络热动力学</div></div>
+      <div class="model model-predict"><div class="model-name">碳排放预测</div><div class="model-tech">排放因子法 + LSTM<br>ISO 14064 标准</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <div style="font-size:11px; font-weight:700; color:var(--orange); margin-bottom:6px;">诊断类模型（2 个）</div>
+        <div class="grid-2">
+          <div class="model model-diag"><div class="model-name">设备健康诊断</div><div class="model-tech">CNN-LSTM + ECM 融合<br>SOH 评估 · RUL 预测</div></div>
+          <div class="model model-diag"><div class="model-name">机房能效诊断</div><div class="model-tech">Autoencoder + Isolation Forest<br>PUE 分解 · 瓶颈定位</div></div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px; font-weight:700; color:var(--red); margin-bottom:6px;">优化类模型（2 个）</div>
+        <div class="grid-2">
+          <div class="model model-opt"><div class="model-name">制冷系统寻优</div><div class="model-tech">DDPG/SAC + MPC<br>滚动优化</div></div>
+          <div class="model model-opt"><div class="model-name">储能调度优化</div><div class="model-tech">DQN/PPO + NSGA-II<br>多目标帕累托</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arr-row">↕</div>
+
+  <!-- Layer 1: Data Collection -->
+  <div class="layer l1">
+    <span class="layer-label">第 1 层</span>
+    <div class="layer-head">
+      <span class="layer-title">数据采集层</span>
+      <span class="tag t-not">硬件/运维团队</span>
+    </div>
+    <div class="layer-desc" style="margin-bottom:8px;">
+      借鉴互联网页面埋点理念，在工业设备关键节点部署传感器。数据管线采用 Lambda 架构：Speed Layer（Kafka + Flink 实时）+ Batch Layer（Spark 批处理）
+    </div>
+    <div class="sensor-grid">
+      <div class="sensor"><strong>储能电池</strong><span>电压/电流/温度/SOC/SOH · 1s</span></div>
+      <div class="sensor"><strong>光伏组件</strong><span>功率/IV曲线/温度/辐照度 · 5s</span></div>
+      <div class="sensor"><strong>充电桩</strong><span>功率/电压/电流/温度 · 1s</span></div>
+      <div class="sensor"><strong>变压器</strong><span>温度/负载率/油位/振动 · 10s</span></div>
+      <div class="sensor"><strong>空调系统</strong><span>功率/温度/湿度/COP · 30s</span></div>
+      <div class="sensor"><strong>配电柜</strong><span>电压/电流/功率/谐波 · 1s</span></div>
+      <div class="sensor"><strong>照明系统</strong><span>功率/亮度/开关状态 · 1min</span></div>
+      <div class="sensor"><strong>生产线</strong><span>能耗/产量/运行状态 · 10s</span></div>
+    </div>
+    <div style="font-size:10px; color:var(--text3); text-align:center;">
+      传感器 → 边缘网关（Jetson Orin / RK3588） → Kafka/Flink → InfluxDB/TimescaleDB → RESTful API 数据服务
+    </div>
+  </div>
+</div>
+
+<!-- ===== MULTI-AGENT MATRIX ===== -->
+<div class="section">
+  <div class="section-title"><span class="icon">🤖</span> 多智能体矩阵</div>
+  <div class="layer-desc" style="margin-bottom:12px;">
+    所有智能体共享同一套 EnerGraph 决策层代码框架（LangGraph 编排 + MCP 工具调用 + BaseSkill 基类 + FastAPI SSE），<br>
+    只是各自挂载不同的 <strong>Skill</strong>（调用不同的算法模型）和不同的 <strong>Prompt</strong>（面向不同的业务场景）。
+  </div>
+  <div class="grid-6">
+    <div class="agent-card active">
+      <div class="agent-name">PowerAI</div>
+      <div class="agent-desc">储能调度管家</div>
+      <div class="agent-skills">
+        <strong>Skill</strong>: energy_dispatch<br>
+        <strong>MCP</strong>: 光伏预测 · 负荷预测 · 电价预测 · 储能调度优化<br>
+        <strong>特色</strong>: 贝叶斯偏好学习 · 反馈驱动调参
+      </div>
+      <div style="margin-top:6px"><span class="tag t-done">当前在做</span></div>
+    </div>
+    <div class="agent-card planned">
+      <div class="agent-name">能效诊断</div>
+      <div class="agent-desc">PUE 优化</div>
+      <div class="agent-skills">
+        <strong>MCP</strong>: 设备健康诊断 · 机房能效诊断 · 制冷寻优
+      </div>
+      <div style="margin-top:6px"><span class="tag t-plan">规划中</span></div>
+    </div>
+    <div class="agent-card planned">
+      <div class="agent-name">碳管理</div>
+      <div class="agent-desc">合规+碳资产</div>
+      <div class="agent-skills">
+        <strong>MCP</strong>: 碳排放预测<br>
+        <strong>场景</strong>: CBAM · ESG · 绿电消纳
+      </div>
+      <div style="margin-top:6px"><span class="tag t-plan">规划中</span></div>
+    </div>
+    <div class="agent-card planned">
+      <div class="agent-name">微电网</div>
+      <div class="agent-desc">源网荷储协同</div>
+      <div class="agent-skills">
+        <strong>MCP</strong>: 多模型联合调度<br>
+        <strong>特色</strong>: 多Agent协作
+      </div>
+      <div style="margin-top:6px"><span class="tag t-plan">规划中</span></div>
+    </div>
+    <div class="agent-card planned">
+      <div class="agent-name">充电调度</div>
+      <div class="agent-desc">充电桩管理</div>
+      <div class="agent-skills">
+        <strong>MCP</strong>: 负荷预测 · 电价预测<br>
+        <strong>特色</strong>: 车流预测动态分配
+      </div>
+      <div style="margin-top:6px"><span class="tag t-plan">规划中</span></div>
+    </div>
+    <div class="agent-card" style="border-color:var(--green); background:rgba(5,150,105,0.04);">
+      <div class="agent-name">HVAC 问答</div>
+      <div class="agent-desc">知识检索</div>
+      <div class="agent-skills">
+        <strong>Skill</strong>: hvac_expert<br>
+        <strong>Tools</strong>: RAG (5605条) + 福加API
+      </div>
+      <div style="margin-top:6px"><span class="tag t-done">已有</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== GUARDRAILS ===== -->
+<div class="section">
+  <div class="section-title"><span class="icon">🛡️</span> 安全与治理体系（Guardrails）</div>
+  <div class="guard-grid">
+    <div class="guard">
+      <div class="guard-icon">🔒</div>
+      <div class="guard-name">输入过滤</div>
+      <div class="guard-desc">Prompt Injection 检测<br>敏感信息拦截<br>BERT 分类器 &lt;10ms</div>
+    </div>
+    <div class="guard">
+      <div class="guard-icon">✅</div>
+      <div class="guard-name">输出审查</div>
+      <div class="guard-desc">硬约束检查（SOC/需量）<br>软约束检查（波动率）<br>JSON Schema 校验</div>
+    </div>
+    <div class="guard">
+      <div class="guard-icon">🧪</div>
+      <div class="guard-name">行为沙箱</div>
+      <div class="guard-desc">物理模型仿真预检<br>设备状态预测<br>危险区域拦截</div>
+    </div>
+    <div class="guard">
+      <div class="guard-icon">👤</div>
+      <div class="guard-name">权限分级</div>
+      <div class="guard-desc">L1 只读 → L2 建议<br>L3 半自主 → L4 全自主<br>渐进授权 + 安全委员会</div>
+    </div>
+    <div class="guard">
+      <div class="guard-icon">📋</div>
+      <div class="guard-name">审计日志</div>
+      <div class="guard-desc">Merkle Tree Append-Only<br>全链路行为记录<br>保留期 ≥ 5年</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ROADMAP ===== -->
+<div class="section">
+  <div class="section-title"><span class="icon">🗺️</span> 实施路线图</div>
+  <div class="grid-2">
+    <div>
+      <div style="font-size:13px; font-weight:700; margin-bottom:10px;">EnerGraph 项目开发阶段</div>
+      <div class="timeline">
+        <div class="tl-item"><span class="tl-dot done"></span><div class="tl-head">Phase 1 ✅ ReAct 循环 + HVAC RAG</div><div class="tl-desc">LangGraph + DeepSeek V4 + ChromaDB + Streamlit 流式前端</div></div>
+        <div class="tl-item"><span class="tl-dot done"></span><div class="tl-head">Phase 2 ✅ FastAPI SSE + 页面跳转</div><div class="tl-desc">Action Agent · UIAction · Java 后端工具</div></div>
+        <div class="tl-item"><span class="tl-dot done"></span><div class="tl-head">Phase 3 ✅ RAG 质量优化</div><div class="tl-desc">相关度阈值 · 拒答机制 · 引用来源</div></div>
+        <div class="tl-item"><span class="tl-dot done"></span><div class="tl-head">Phase 4 ✅ 福加 API 真实对接</div><div class="tl-desc">10 个 REST API + Token 自动刷新 + 全量 17 接口</div></div>
+        <div class="tl-item"><span class="tl-dot done"></span><div class="tl-head">Phase 7 ✅ 多意图识别</div><div class="tl-desc">单输入多意图拆分 + 分段报告</div></div>
+        <div class="tl-item"><span class="tl-dot current"></span><div class="tl-head">当前：PowerAI 核心能力</div><div class="tl-desc">MCP 对接算法模型 · 综合决策 Skill · PostgresSaver · HITL</div></div>
+        <div class="tl-item"><span class="tl-dot planned"></span><div class="tl-head">近期：Phase 5/6 + RAG 升级</div><div class="tl-desc">语音助手 · 可视化报表 · BGE-M3 混合检索 · MCP 标准化</div></div>
+        <div class="tl-item"><span class="tl-dot planned"></span><div class="tl-head">中期：记忆 + 闭环学习 MVP</div><div class="tl-desc">Redis+Milvus 两层记忆 · Event Sourcing · Guardrails 基础</div></div>
+        <div class="tl-item"><span class="tl-dot planned"></span><div class="tl-head">长期：高级自演化能力</div><div class="tl-desc">知识图谱 · 多Agent · Dreaming · 联邦学习 · 边缘部署</div></div>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:13px; font-weight:700; margin-bottom:10px;">公司 V3.0 产品路线图</div>
+      <div class="timeline">
+        <div class="tl-item"><span class="tl-dot planned"></span><div class="tl-head">2026 H2 — 数据基础 + 预测模型</div><div class="tl-desc">传感器部署 · 5 个预测模型训练 · Event Sourcing MVP</div></div>
+        <div class="tl-item"><span class="tl-dot planned"></span><div class="tl-head">2027 H1 — 诊断模型 + 技能工厂</div><div class="tl-desc">故障预警 · Qwen3 微调 · CART 规则提取 · 首批 L1 技能注册</div></div>
+        <div class="tl-item"><span class="tl-dot planned"></span><div class="tl-head">2027 H2 — PowerAI 交互式调度</div><div class="tl-desc">储能调度上线 · 贝叶斯偏好学习 · A/B 测试框架</div></div>
+        <div class="tl-item"><span class="tl-dot planned"></span><div class="tl-head">2028 H1 — 多 Agent 协作</div><div class="tl-desc">全场景覆盖 · A2A + NATS · 跨Agent技能复用</div></div>
+        <div class="tl-item"><span class="tl-dot planned"></span><div class="tl-head">2028 H2 — 生态开放</div><div class="tl-desc">行业定制 · 技能市场 · 联邦学习 · 跨企业复用</div></div>
+        <div class="tl-item"><span class="tl-dot planned"></span><div class="tl-head">2029+ — 群体智能</div><div class="tl-desc">Agent 自主发现新场景 · 在线 Continual Learning · 递归自改进</div></div>
+      </div>
+
+      <div style="font-size:13px; font-weight:700; margin: 16px 0 10px;">关键技术选型（V3.0 规划）</div>
+      <div class="grid-2" style="gap:6px;">
+        <div class="card"><div class="card-title">基座模型</div><div class="card-desc">Qwen3-235B MoE + QLoRA + DPO</div></div>
+        <div class="card"><div class="card-title">推理框架</div><div class="card-desc">vLLM（云端）+ TensorRT-LLM（边缘）</div></div>
+        <div class="card"><div class="card-title">RAG</div><div class="card-desc">BGE-M3 + Milvus + BGE-Reranker</div></div>
+        <div class="card"><div class="card-title">知识图谱</div><div class="card-desc">Neo4j / NebulaGraph + CDC</div></div>
+        <div class="card"><div class="card-title">Agent 编排</div><div class="card-desc">LangGraph StateGraph + 子图</div></div>
+        <div class="card"><div class="card-title">通信协议</div><div class="card-desc">MCP（工具）+ A2A（Agent 间）</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="footnote">
+  南京福加智能科技有限公司 · 青山大模型 V3.0 · EnerGraph 项目架构文档 · 2026-06-12
+</div>
+
+</div>
+</body>
+</html>

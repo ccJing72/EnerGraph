@@ -134,6 +134,7 @@ class UIRouterSkill(BaseSkill):
         "fetch_active_alarms",
         "fetch_carbon_info",
         "fetch_photovoltaic_monthly",
+        "fetch_photovoltaic_daily",
         "fetch_energy_usage",
         "fetch_device_rank",
         "fetch_environment_params",

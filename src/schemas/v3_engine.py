@@ -1,8 +1,8 @@
-"""v3_engine — V3 引擎输入输出 Pydantic 数据模型
+"""v3_engine — 数据模型定义
 
 所属层：schemas
 依赖：pydantic
-对接 V3 引擎：PhysicsAI / TimeDiT / AIDC_Cooling
+对接算法层：N/A（数据结构定义）
 """
 from typing import List
 from pydantic import BaseModel, Field
@@ -26,33 +26,14 @@ class ConstraintMatrix(BaseModel):
     extra_constraints: dict = {}
 
 
-class TimeDiTForecast(BaseModel):
-    """QingShan-TimeDiT 时序扩散模型预测输出"""
-    target_date: str
-    load_forecast: List[float]
-    solar_forecast: List[float]
-    confidence_interval: List[float]
-
-
 class PhysicsResidual(BaseModel):
-    """PhysicsAI 物理一致性验证结果"""
+    """设备诊断验证结果（保留字段待算法团队明确 MCP 接口后重构）"""
     strategy_id: str
     is_physically_valid: bool
     langevin_residual: float
     soc_decay_deviation: float
     heat_balance_error: float
     safety_warnings: List[str] = []
-
-
-class AIDCCoolingStatus(BaseModel):
-    """智算中心液冷状态"""
-    datacenter_id: str
-    gpu_queue_depth: int
-    liquid_cooling_temp: float
-    pre_cooling_policy: str
-    power_draw_kw: float
-
-
 class HVACKnowledgeResult(BaseModel):
     """HVAC 知识库 RAG 检索结果"""
     query: str

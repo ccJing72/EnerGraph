@@ -459,6 +459,62 @@ def fetch_photovoltaic_monthly(site_id: str) -> Dict[str, Any]:
         return {"error": f"fetch_photovoltaic_monthly: {e}"}
 
 
+# ── 日度光伏发电量 ─────────────────────────────────────────────────
+
+def fetch_photovoltaic_daily(site_id: str, date: str = "") -> Dict[str, Any]:
+    """获取指定日期的光伏发电量。
+
+    真实 API: GET /integrateMonitor/photovoltaicStorage/realTimePowerList
+    返回 15 分钟间隔的功率数据，通过累加（功率 × 0.25h）计算日发电量。
+
+    Args:
+        site_id: 站点 ID
+        date: 查询日期，格式 YYYY-MM-DD，默认今天
+
+    Returns:
+        dict: {date, generation_kwh, peak_power_kw, data_points}
+    """
+    try:
+        if not date:
+            date = datetime.now().strftime("%Y-%m-%d")
+
+        if not _is_mock():
+            api_data = _api_get("/integrateMonitor/photovoltaicStorage/realTimePowerList", {
+                "date": date,
+            })
+
+            # 累加光伏发电量：每个数据点间隔 15 分钟 = 0.25 小时
+            total_kwh = 0.0
+            peak_kw = 0.0
+            count = 0
+            for item in api_data:
+                for p in item.get("powerInfoList", []):
+                    if p.get("code") == "photovoltaic":
+                        power = abs(float(p.get("value", 0)))  # 光伏值为负，取绝对值
+                        total_kwh += power * 0.25  # 15min = 0.25h
+                        peak_kw = max(peak_kw, power)
+                        count += 1
+                        break
+
+            return {
+                "date": date,
+                "generation_kwh": round(total_kwh, 1),
+                "peak_power_kw": round(peak_kw, 1),
+                "data_points": count,
+            }
+
+        # Mock fallback
+        return {
+            "date": date,
+            "generation_kwh": round(random.uniform(80, 200), 1),
+            "peak_power_kw": round(random.uniform(40, 100), 1),
+            "data_points": 96,
+        }
+    except Exception as e:
+        logger.error(f"fetch_photovoltaic_daily 失败: {e}")
+        return {"error": f"fetch_photovoltaic_daily: {e}"}
+
+
 # ── 全厂用电量（今日 + 本月 + 趋势） ─────────────────────────────
 
 def fetch_energy_usage(site_id: str) -> Dict[str, Any]:

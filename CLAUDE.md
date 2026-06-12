@@ -1,4 +1,4 @@
-# CLAUDE.md — 青山 V3 多模态调度 Agent 项目协作准则
+# CLAUDE.md — EnerGraph（青山大模型）自演化智能能源 Agent 项目协作准则
 
 > **本文是项目固定策略与行为规范。** Claude 每次会话自动加载此文件。人类协作者也需遵循同等标准。
 
@@ -6,11 +6,13 @@
 
 ## 项目宗旨
 
-构建基于青山大模型 V3（QingShan-TimeDiT + PhysicsAI）基座的多模态调度 Agent 系统。Agent 定位为 V3 五层架构的**第 0 层（认知交互层）**，作为"业务意图翻译官"与"物理决策解说员"：
+构建青山大模型 V3.0 五层架构中 **决策层 + 自演化引擎层** 的 Agent 实现（项目代号 EnerGraph）。Agent 作为系统的"编排大脑"，**自身不做数值计算**，而是：
 
-- **输入端**：解析来自 ERP/MES 及人类自然语言的多模态业务意图，转化为物理约束矩阵
-- **调度端**：通过内部 API 触发底层 PhysicsAI 与 TimeDiT 引擎进行沙盘推演
-- **输出端**：将生涩的物理/运筹学数据转化为多维 Markdown 解释报告（能耗收益、碳排下降、设备安全边界）
+- **意图理解**：解析用户自然语言 / ERP JSON 中的业务意图，拆解为结构化任务
+- **工具调度**：通过 **MCP 协议**调用算法模型层的计算引擎（预测/诊断/优化），通过 REST API 查询福加运营数据
+- **决策解释**：将算法模型返回的数值结果转化为用户可理解的 Markdown 报告（能耗收益、碳排下降、设备安全边界）
+
+**业务身份**：EnerGraph 的第一个落地身份是 **PowerAI 储能调度智能体**（光伏预测 + 负荷预测 → 综合决策 → 充放电策略）。未来通过不同 Skill 配置可扩展为能效诊断、碳管理等其他智能体。
 
 **性质**：企业级落地方案，不公开。
 
@@ -18,9 +20,10 @@
 
 ## 架构红线（Architectural Constraints）
 
-1. **Agent 定位**：Agent 只是"翻译官"和"调度员"，**绝对禁止**在 Python/LangGraph 代码中手写任何能源计算、峰谷套利公式、热力学推导。所有计算必须通过 `Tools`（模拟底层 PhysicsAI / TimeDiT 接口）获取结果。
-2. **解耦设计**：Prompt 必须外部化（存入 YAML/Markdown），配置与代码严格分离。
-3. **类型严格**：`AgentState` 使用 `TypedDict` + `Annotated` reducer 定义（LangGraph 官方规范）；Tool Inputs/Outputs 使用 Pydantic BaseModel 定义，禁止裸 dict 作为工具参数。
+1. **Agent 定位**：Agent 只是"编排大脑"，**绝对禁止**在 Python/LangGraph 代码中手写任何能源计算、峰谷套利公式、热力学推导、预测算法。所有计算必须通过 `Tools`（MCP Server 或 REST API）获取结果。
+2. **MCP 优先**：算法模型层的计算引擎（预测/诊断/优化模型）必须通过 MCP 协议调用，Agent 不得直接依赖算法模型的内部实现。福加运营数据工具保持 REST API 方式。
+3. **解耦设计**：Prompt 必须外部化（存入 YAML/Markdown），配置与代码严格分离。
+4. **类型严格**：`AgentState` 使用 `TypedDict` + `Annotated` reducer 定义（LangGraph 官方规范）；Tool Inputs/Outputs 使用 Pydantic BaseModel 定义，禁止裸 dict 作为工具参数。
 
 ---
 
@@ -41,7 +44,7 @@
 
 所属层：<config / schemas / tools / graph / frontend / utils / pipelines / skills / services / memory / tests>
 依赖：<列出主要依赖>
-对接 V3 引擎：<PhysicsAI / TimeDiT / AIDC_Cooling，若无则填 N/A>
+对接算法层：<光伏预测 / 电负荷预测 / 冷负荷预测 / 电价预测 / 设备健康诊断 / 机房能效诊断 / 制冷寻优 / 储能调度优化 / 碳排预测，若无则填 N/A>
 """
 ```
 
@@ -135,7 +138,7 @@ git push origin main
 
 ### AI 助手行为准则
 1. **先读完 `AI_CONTEXT.md` 全文**再动手
-2. 读相关模块的文件头注释，了解各层职责及对接的 V3 引擎模块
+2. 读相关模块的文件头注释，了解各层职责及对接的算法模型
 3. 完成工作后**必须更新 `CHANGELOG.md`** + 同步 `AI_CONTEXT.md` §6 摘要（保留最近 5 条）+ 更新 `AI_CONTEXT.md` 对应章节（如 §2/§3/§4/§5）
 4. 不确定架构决策时，在 `CHANGELOG.md` 注明"待确认"，等人类审查
 
@@ -149,11 +152,13 @@ git push origin main
 3. Skill 内部只编排 Tools，不直接调用 LLM（LLM 调用在 Graph 节点层）
 4. 更新 `AI_CONTEXT.md` §3 + §4
 
-### 新增 Tool（V3 引擎 Mock）
-1. `src/tools/` 下新建文件，文件头注明对接的 V3 引擎模块
+### 新增 Tool（算法模型 MCP 工具 / 运营数据 API 工具）
+1. `src/tools/` 下新建文件，文件头注明对接的算法模型（MCP）或福加 API（REST）
 2. 在 `src/tools/__init__.py` 的 `TOOL_REGISTRY` + `TOOL_SCHEMAS` 注册
 3. 返回 Pydantic 模型（定义在 `src/schemas/`），禁止裸 dict
-4. 更新 `AI_CONTEXT.md` §4
+4. **算法模型工具**：通过 MCP Client 调用算法团队的 MCP Server，Agent 不直接实现算法逻辑
+5. **运营数据工具**：直接调用福加 Java 后端 REST API，参数解析和 Token 刷新在 Tool 代码内处理
+6. 更新 `AI_CONTEXT.md` §4
 
 ### 新增 Graph 节点
 1. 在 `src/graph/nodes.py` 添加节点函数

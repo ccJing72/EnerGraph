@@ -6,7 +6,7 @@
 |------|------|------|
 | 2026-06-12 | API 交付前端对接：新增 CORS 中间件 + 可选 Bearer Token 鉴权 + 启动脚本 run.py + API 配置段（ApiConfig）+ 前端对接文档（Vue.js 代码示例 + TypeScript 类型定义 + SSE 流式对接指南）。api.py 版本升至 0.3.0 | 魏博源 |
 | 2026-06-12 | Token 自动刷新机制（Phase 4.3）：新建 src/utils/fuca_token_refresher.py（逆向福加前端 RSA 加密 + 登录 + mb/token 获取 + .env 自动更新）；改造 java_backend.py（动态 Token 管理 + 401/code=401 自动刷新重试 + 线程安全锁）；.env 新增 FUCA_LOGIN_NAME/FUCA_PASSWORD；requirements.txt 新增 pycryptodome | 魏博源 |
-| 2026-06-12 | 修复 fetch_cop_data 字段映射错误：改为取「水系统累计COP」（=7.0，用户看到的机房平均COP），而非「机组累计COP」（=9.6）。保留 getValueByPointGroupNames 接口。新增 fetch_efficiency_detail 通用能效查询工具（8 种参数） | 魏博源 |
+| 2026-06-12 | 新增 fetch_photovoltaic_daily 日度光伏发电量工具（累加 15min 功率数据计算日发电量）。修复 fetch_cop_data 字段映射（水系统累计COP=7.0）。新增 fetch_efficiency_detail 通用能效查询（8 种参数） | 魏博源 |
 | 2026-06-12 | Phase 4.2 代码审查 + 重构：提取 _api_get/_api_post 公共函数消除样板；新增 fetch_photovoltaic_monthly 工具；action_agent_nav_hint prompt 精简并补充全部新工具导航规则。54 tests 全通过 | 魏博源 |
 | 2026-06-12 | Phase 4.2 Task 3+4 完成：代码实现（8 个工具接入真实 API）。fetch_cop_data/fetch_active_alarms 从 Mock 改为真实 API；新增 fetch_carbon_info/fetch_photovoltaic_monthly/fetch_energy_usage/fetch_device_rank/fetch_environment_params/fetch_efficiency_calendar。schemas 新增 6 个 Pydantic 模型 | 魏博源 |
 | 2026-06-12 | Phase 4.2 Task 2 完成：Chrome MCP 全量抓取（Batch 1+2+3）。5 个页面共抓取 17 个接口（含 4 个 Bonus）。抓取数据保存至 docs/api_capture_batch1.md + docs/api_capture_batch2.md | 魏博源 |

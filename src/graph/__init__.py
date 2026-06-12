@@ -2,5 +2,5 @@
 
 所属层：graph
 依赖：langgraph, langchain_core
-对接 V3 引擎：PhysicsAI / TimeDiT / AIDC_Cooling（通过 Tools）
+对接算法层：HVAC RAG / 福加运营数据 API（通过 Tools）
 """

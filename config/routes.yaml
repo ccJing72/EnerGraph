@@ -32,7 +32,7 @@ accessible_routes:
   - path: "/coordination/energy"
     name: "光储实时能量"
     keywords: ["光储", "光伏", "储能", "能量流", "实时能量"]
-    tools: ["fetch_energy_summary"]
+    tools: ["fetch_energy_summary", "fetch_photovoltaic_daily", "fetch_photovoltaic_monthly"]
     category: "光储协同"
     description: "能量流向桑基图、实时功率、供需结构"
 

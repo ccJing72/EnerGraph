@@ -2,7 +2,7 @@
 
 所属层：graph
 依赖：langchain_core, src.tools, src.config.settings
-对接 V3 引擎：PhysicsAI / TimeDiT / AIDC_Cooling（通过 Tools）
+对接算法层：HVAC RAG / 福加运营数据 API（通过 Tools）
 """
 import json
 import logging
@@ -29,6 +29,7 @@ _TOOL_CATEGORY: Dict[str, str] = {
     "fetch_active_alarms": "alarm",
     "fetch_carbon_info": "monitor",
     "fetch_photovoltaic_monthly": "monitor",
+    "fetch_photovoltaic_daily": "monitor",
     "fetch_energy_usage": "monitor",
     "fetch_device_rank": "monitor",
     "fetch_environment_params": "monitor",

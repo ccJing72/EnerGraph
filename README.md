@@ -1,6 +1,6 @@
-# EnerGraph — 青山 V3 多模态调度 Agent
+# EnerGraph — 青山大模型 V3.0 决策层
 
-基于 LangGraph 的企业级能源管理 AI Agent，定位为青山大模型 V3（QingShan-TimeDiT + PhysicsAI）五层架构的**第 0 层认知交互层**。集成 HVAC 专业知识库，支持自然语言问答、能源调度分析，并通过 FastAPI SSE 接口向福加监控平台前端下发页面跳转控制信号。
+基于 LangGraph 的企业级能源管理 AI Agent，定位为青山大模型 V3.0 五层架构的**第 3 层决策层**（意图理解 → 工具调度 → 决策解释）。集成 HVAC 专业知识库，支持自然语言问答、福加运营数据查询，并通过 FastAPI SSE 接口向前端下发页面跳转控制信号。
 
 ## 功能
 
@@ -131,7 +131,7 @@ EnerGraph/
 | Phase 1 | ReAct 循环 + HVAC RAG + DeepSeek V4 + 流式前端 | ✅ 完成 |
 | Phase 2 | Action Agent：FastAPI SSE + UIAction 跳转信号 + Java 后端工具 | ✅ 完成 |
 | Phase 3 | RAG 质量优化（置信度阈值 + MMR 去重 + 拒答 + 引用来源） | ✅ 完成 |
-| Phase 4 | Mock → 真实预测 API（TimeDiT / PhysicsAI / AIDC） | 待开始 |
+| Phase 4 | 福加真实 API 对接（10 个监控数据工具 + Token 自动刷新） | ✅ 完成 |
 | Phase 5 | 语音助手（Whisper STT + TTS） | 待开始 |
 | Phase 6 | 数据可视化 + 报表导出（表格/图表/CSV 下载） | 待开始 |
 | Phase 7 | 多意图识别与拆分执行（IntentItem + 分段报告 + SSE） | ✅ 完成 |
@@ -140,8 +140,9 @@ EnerGraph/
 
 详见 [CLAUDE.md](CLAUDE.md)。核心原则：
 
-- Agent **禁止**手写能源计算，所有计算通过 Tools 调用
-- Skills 封装业务推理（Prompt + SOP），Tools 封装原子执行，Graph Nodes 只负责调度
+- Agent **禁止**手写能源计算，所有数据通过 Tools 获取
+- 算法模型通过 MCP 协议调用（待算法团队就绪）
+- Skills 封装业务推理（Prompt + SOP），Tools 封装原子执行
 - `AgentState` 用 `TypedDict + Annotated`，Tool I/O 用 Pydantic BaseModel
 - Prompt 集中管理至 `src/config/prompts.yaml`，禁止硬编码
 - 每个 `.py` 文件必须有模块 docstring（层 / 依赖 / 对接引擎）

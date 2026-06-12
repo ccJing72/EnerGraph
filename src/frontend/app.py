@@ -1,8 +1,8 @@
-"""app — V3 多模态调度 Agent + HVAC 知识库 Streamlit 前端
+"""app — 青山大模型决策层 + HVAC 知识库 Streamlit 演示前端
 
 所属层：frontend
 依赖：streamlit, src.graph.builder
-对接 V3 引擎：N/A（通过 graph 间接调用）
+对接算法层：N/A（通过 graph 间接调用）
 """
 import sys
 from pathlib import Path
@@ -34,9 +34,9 @@ def _build_route_names() -> dict:
 # 启动时从 routes.yaml 构建一次
 _ROUTE_NAMES = _build_route_names()
 
-st.set_page_config(page_title="青山 V3 多模态调度 Agent", layout="wide")
-st.title("青山 V3 多模态调度 Agent")
-st.caption("暖通空调专家问答 · 能源调度分析 · 基于 QingShan-TimeDiT + PhysicsAI")
+st.set_page_config(page_title="青山大模型决策层演示", layout="wide")
+st.title("青山大模型决策层演示")
+st.caption("暖通空调专家问答 · 福加运营数据查询 · 基于 LangGraph + DeepSeek V4")
 
 NODE_STEPS = {
     "cognitive_parser": "意图解析 — 分析问题类型，选择工具",
@@ -54,7 +54,6 @@ with st.sidebar:
     from datetime import datetime
     current_date = datetime.now().strftime("%Y-%m-%d")
     target_date = st.text_input("目标日期（调度场景）", value=current_date)
-    datacenter_id = st.text_input("数据中心 ID（AIDC 场景）", value="Mock 假数据")
     st.divider()
     st.markdown("**平台专属**")
     platform_examples = [
@@ -131,10 +130,7 @@ if user_input:
     # 调用 Agent（token 级流式）
     with st.chat_message("assistant"):
         try:
-            full_input = (
-                f"{user_input}\n"
-                f"[target_date={target_date}, datacenter_id={datacenter_id}]"
-            )
+            full_input = f"{user_input}\n[target_date={target_date}]"
 
             steps_ph = st.empty()           # 最上：ReAct 步骤
             details_ph = st.empty()        # 中间：工具/RAG 详情（在回答上方）
@@ -259,11 +255,8 @@ if user_input:
             if result.get("hvac_knowledge"):
                 details["📚 HVAC 知识库检索"] = result["hvac_knowledge"]
             if result.get("timedit_data"):
-                details["📈 TimeDiT 预测"] = result["timedit_data"]
             if result.get("physics_verification"):
-                details["🔬 PhysicsAI 验证"] = result["physics_verification"]
             if result.get("aidc_cooling"):
-                details["❄️ AIDC 液冷状态"] = result["aidc_cooling"]
             if result.get("constraints"):
                 details["🎯 意图解析（ConstraintMatrix）"] = result["constraints"]
 

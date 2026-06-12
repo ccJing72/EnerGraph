@@ -1,15 +1,12 @@
-"""工具注册表 — V3 引擎 Mock Tools + HVAC 知识库 + 福加真实 API Tools
+"""工具注册表 — HVAC 知识库 + 福加运营数据 API Tools
 
 所属层：tools
 依赖：src.tools.*
-对接 V3 引擎：PhysicsAI / TimeDiT / AIDC_Cooling / HVAC RAG / 福加监控 API
+对接算法层：HVAC RAG（ChromaDB 本地）/ 福加监控 API（REST）
 """
 from typing import Any, Callable, Dict
 
 from src.tools.parse_intent import parse_business_intent
-from src.tools.query_timedit import query_timedit_forecast
-from src.tools.verify_physics import verify_physics_consistency
-from src.tools.fetch_aidc_cooling import fetch_aidc_cooling_status
 from src.tools.query_hvac_knowledge import query_hvac_knowledge
 from src.tools.java_backend import (
     fetch_cop_data,
@@ -17,6 +14,7 @@ from src.tools.java_backend import (
     fetch_active_alarms,
     fetch_carbon_info,
     fetch_photovoltaic_monthly,
+    fetch_photovoltaic_daily,
     fetch_energy_usage,
     fetch_device_rank,
     fetch_environment_params,
@@ -27,15 +25,13 @@ from src.tools.navigate_to_page import navigate_to_page
 
 TOOL_REGISTRY: Dict[str, Callable[..., Dict[str, Any]]] = {
     "parse_business_intent": parse_business_intent,
-    "query_timedit_forecast": query_timedit_forecast,
-    "verify_physics_consistency": verify_physics_consistency,
-    "fetch_aidc_cooling_status": fetch_aidc_cooling_status,
     "query_hvac_knowledge": query_hvac_knowledge,
     "fetch_cop_data": fetch_cop_data,
     "fetch_energy_summary": fetch_energy_summary,
     "fetch_active_alarms": fetch_active_alarms,
     "fetch_carbon_info": fetch_carbon_info,
     "fetch_photovoltaic_monthly": fetch_photovoltaic_monthly,
+    "fetch_photovoltaic_daily": fetch_photovoltaic_daily,
     "fetch_energy_usage": fetch_energy_usage,
     "fetch_device_rank": fetch_device_rank,
     "fetch_environment_params": fetch_environment_params,
@@ -47,46 +43,13 @@ TOOL_REGISTRY: Dict[str, Callable[..., Dict[str, Any]]] = {
 TOOL_SCHEMAS = [
     {
         "name": "parse_business_intent",
-        "description": "将自然语言或 ERP/MES 输入解析为 V3 DFL 可读的约束矩阵（ConstraintMatrix）",
+        "description": "将自然语言输入解析为结构化业务意图（ConstraintMatrix）",
         "parameters": {
             "type": "object",
             "properties": {
                 "user_input": {"type": "string", "description": "用户自然语言输入"},
             },
             "required": ["user_input"],
-        },
-    },
-    {
-        "name": "query_timedit_forecast",
-        "description": "调用 QingShan-TimeDiT 时序扩散模型，获取未来 24 小时光伏与负荷概率分布预测",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "target_date": {"type": "string", "description": "目标日期，格式 YYYY-MM-DD"},
-            },
-            "required": ["target_date"],
-        },
-    },
-    {
-        "name": "verify_physics_consistency",
-        "description": "调用 PhysicsAI 验证调度策略是否符合热力学热平衡与 SOC 衰减模型",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "strategy_id": {"type": "string", "description": "调度策略 ID"},
-            },
-            "required": ["strategy_id"],
-        },
-    },
-    {
-        "name": "fetch_aidc_cooling_status",
-        "description": "获取智算中心 GPU 负载队列与液冷状态，支持算力-冷却-储能协同调度解释",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "datacenter_id": {"type": "string", "description": "数据中心 ID"},
-            },
-            "required": ["datacenter_id"],
         },
     },
     {
@@ -153,6 +116,18 @@ TOOL_SCHEMAS = [
             "type": "object",
             "properties": {
                 "site_id": {"type": "string", "description": "站点 ID，如 FJJB000001"},
+            },
+            "required": ["site_id"],
+        },
+    },
+    {
+        "name": "fetch_photovoltaic_daily",
+        "description": "获取指定日期的光伏发电量(kWh)和峰值功率(kW)。通过累加15分钟间隔功率数据计算日发电量。回答今天/某天发了多少光伏电时使用",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "site_id": {"type": "string", "description": "站点 ID，如 FJJB000001"},
+                "date": {"type": "string", "description": "查询日期，格式 YYYY-MM-DD，默认今天"},
             },
             "required": ["site_id"],
         },
