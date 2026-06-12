@@ -1,5 +1,6 @@
 # 站点与后端接口参数映射表
 # 用于将 Agent 层的 site_id 转换为真实接口需要的 nodeId 和 deviceCodes
+# Phase 4.2: 新增 cwer_id / device_code / alarm_days / cop_point_names 等参数
 
 sites:
   FJJB000001:
@@ -9,6 +10,86 @@ sites:
     classification_name: "电"
     device_name: "全部设备"
     device_level: 0
+
+    # ── 冷水机房参数（能效日历 / COP / 环境参数） ──
+    cwer_id: 3602                          # 冷水机房设备 ID（能效日历 / roomEnergy 用）
+    cwer_device_code: "KTXT-CWER-0001"     # 冷水机房设备 code（环境参数用）
+    cop_point_names:                       # COP 查询（getValueByPointGroupNames API）
+      - "水系统累计COP"                     # 机房COP（用户看到的"机房平均COP"=7）
+      - "水系统瞬时COP"                     # 机房瞬时COP
+    # 能效查询参数目录（queryPointEnergyEfficiency API）
+    # 后续可从 queryEnergyParams 接口动态获取
+    efficiency_points:
+      # ── COP / SCOP ──
+      水系统平均COP:
+        point_id: "175430578298800000888"
+        point_name: "冷冻机房-水系统平均COP"
+        param_name: "平均COP"
+        obj_name: "冷水机房#1"
+      冷水主机平均COP:
+        point_id: "175430578309700000989"
+        point_name: "冷冻机房-冷水主机平均COP"
+        param_name: "平均COP"
+        obj_name: "冷水机房#1"
+      水系统平均SCOP:
+        point_id: "175430578297800000879"
+        point_name: "冷冻机房-水系统平均SCOP"
+        param_name: "平均SCOP"
+        obj_name: "冷水机房#1"
+      # ── 制冷量 ──
+      水系统瞬时制冷量:
+        point_id: "175430578297600000877"
+        point_name: "冷冻机房-水系统瞬时制冷量"
+        param_name: "瞬时制冷量"
+        obj_name: "冷水机房#1"
+        unit: "kW"
+      水系统累计制冷量:
+        point_id: "175430578306300000956"
+        point_name: "冷冻机房-水系统累计制冷量"
+        param_name: "累计制冷量"
+        obj_name: "冷水机房#1"
+        unit: "kWh"
+      # ── 功率 / 电能 ──
+      水系统瞬时功率:
+        point_id: "175430578303900000933"
+        point_name: "冷冻机房-瞬时功率统计水系统"
+        param_name: "瞬时功率"
+        obj_name: "冷水机房#1"
+        unit: "kW"
+      水系统累计电能:
+        point_id: "175430578303700000932"
+        point_name: "冷冻机房-累计电能水系统"
+        param_name: "累计电能"
+        obj_name: "冷水机房#1"
+        unit: "kWh"
+      # ── 其他 ──
+      水系统热平衡系数:
+        point_id: "175430578297300000875"
+        point_name: "冷冻机房-水系统热平衡系数"
+        param_name: "热平衡系数"
+        obj_name: "冷水机房#1"
+        unit: "%"
+    env_point_names:                       # 环境参数查询的 pointGroupNames
+      - "室外温度"
+      - "室外湿度"
+      - "室外湿球温度"
+      - "室外焓值"
+
+    # ── 报警查询参数 ──
+    alarm_days: 7                          # 查询最近 N 天的报警
+
+    # ── 能耗排名 deviceCodes ──
+    room_device_codes:
+      - "KTXT-CWER-CWEG-0001"
+      - "KTXT-CWER-CWEG-0002"
+      - "KTXT-CWER-LDWP-0001"
+      - "KTXT-CWER-LDWP-0002"
+      - "KTXT-CWER-LQWP-0001"
+      - "KTXT-CWER-LQWP-0002"
+      - "KTXT-CWER-LQT-0001"
+      - "KTXT-CWER-LQT-0002"
+
+    # ── 全量 deviceCodes（能耗汇总用） ──
     device_codes:
       - "LIGHT-0001"
       - "KTXT-CWER-CWEG-0001"

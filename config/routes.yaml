@@ -10,12 +10,14 @@ accessible_routes:
   - path: "/index/index"
     name: "首页"
     keywords: ["首页", "总览", "概览", "dashboard", "主页"]
+    tools: ["fetch_environment_params", "fetch_energy_usage", "fetch_device_rank"]
     category: "总览"
     description: "综合概览：用能排名、COP、环境参数、能效日历、现场画面"
 
   - path: "/fucaView"
     name: "项目概览"
     keywords: ["项目概览", "项目", "概况", "碳排", "绿电"]
+    tools: ["fetch_carbon_info", "fetch_photovoltaic_monthly"]
     category: "总览"
     description: "项目概况、碳排、光伏、储能、充电桩、用电占比、空调能效"
 
@@ -30,6 +32,7 @@ accessible_routes:
   - path: "/coordination/energy"
     name: "光储实时能量"
     keywords: ["光储", "光伏", "储能", "能量流", "实时能量"]
+    tools: ["fetch_energy_summary"]
     category: "光储协同"
     description: "能量流向桑基图、实时功率、供需结构"
 
@@ -37,6 +40,7 @@ accessible_routes:
   - path: "/analysis/consumption-panel"
     name: "能耗分析"
     keywords: ["能耗分析", "消费面板", "用能分析", "能耗"]
+    tools: ["fetch_energy_summary"]
     category: "用能分析"
     description: "区域/设备/类型/时间筛选的能耗趋势和设备占比"
 
@@ -49,18 +53,21 @@ accessible_routes:
   - path: "/analysis/calendar"
     name: "能效日历"
     keywords: ["能效日历", "COP日历", "每日能效", "日历"]
+    tools: ["fetch_efficiency_calendar"]
     category: "用能分析"
     description: "月度COP日历、能效评价"
 
   - path: "/analysis/query"
     name: "能效查询"
     keywords: ["能效查询", "SCOP", "能效参数", "能效"]
+    tools: ["fetch_cop_data"]
     category: "用能分析"
     description: "SCOP等能效参数查询和趋势"
 
   - path: "/analysis/rank"
     name: "能耗排名"
     keywords: ["能耗排名", "排名", "最耗电", "设备排名"]
+    tools: ["fetch_device_rank"]
     category: "用能分析"
     description: "设备/区域能耗排名和同比"
 
@@ -74,6 +81,7 @@ accessible_routes:
   - path: "/smart-maintenance/equipment-operation"
     name: "设备运行"
     keywords: ["设备运行", "设备", "冷水机组", "水泵", "冷却塔", "设备参数"]
+    tools: ["fetch_cop_data"]
     category: "智慧运维"
     description: "设备树、设备详情（信息/运行数据/蒸发器/冷凝器/报警/趋势）"
 
@@ -119,6 +127,7 @@ accessible_routes:
   - path: "/alarm/realtime"
     name: "实时报警"
     keywords: ["实时报警", "报警", "故障", "告警"]
+    tools: ["fetch_active_alarms"]
     category: "报警管理"
     description: "当前活跃报警列表（可按区域/类型/等级筛选）"
 

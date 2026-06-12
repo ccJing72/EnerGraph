@@ -42,11 +42,14 @@ class UIAction(BaseModel):
 # ── Java 后端工具输出模型（Phase 2 T3）──────────────────────────────
 
 class COPData(BaseModel):
-    """冷水机组 COP（能效比）数据。"""
+    """冷水机房 COP（能效比）数据。
+
+    机房COP = 水系统累计COP = 整个冷水机房（冷水机组+冷水泵+冷却水泵+冷却塔）的综合能效。
+    """
     site_id: str = Field(..., description="站点 ID")
     chiller_id: str = Field(..., description="冷水机组编号")
-    instant_cop: float = Field(..., description="瞬时 COP")
-    cumulative_cop: float = Field(..., description="累计 COP")
+    instant_cop: float = Field(..., description="机房瞬时COP（水系统瞬时COP）")
+    cumulative_cop: float = Field(..., description="机房COP（水系统累计COP，即用户看到的机房平均COP）")
     chilled_water_out_temp: float = Field(..., description="冷冻水出水温度 (℃)")
     cooling_water_in_temp: float = Field(..., description="冷却水进水温度 (℃)")
     power_kw: float = Field(..., description="实时功率 (kW)")
@@ -83,3 +86,59 @@ class AlarmList(BaseModel):
     site_id: str = Field(..., description="站点 ID")
     total_count: int = Field(..., description="活跃报警总数")
     alarms: list[AlarmItem] = Field(default_factory=list, description="报警列表")
+
+
+# ── Phase 4.2 新增工具输出模型 ─────────────────────────────────────
+
+class CarbonInfo(BaseModel):
+    """碳排信息（光伏月发电 + 碳减排）。"""
+    photovoltaic_month_kwh: float = Field(..., description="本月光伏发电量 (kWh)")
+    carbon_reduce_month_kg: float = Field(..., description="本月碳减排量 (kgCO₂e)")
+    carbon_reduce_total_kg: float = Field(default=0.0, description="累计碳减排量 (kgCO₂e)")
+    pv_mom_pct: float = Field(default=0.0, description="光伏发电环比 (%)")
+    carbon_mom_pct: float = Field(default=0.0, description="碳减排环比 (%)")
+
+
+class EnergyUsage(BaseModel):
+    """全厂用电量（今日 + 本月 + 趋势）。"""
+    today_kwh: float = Field(..., description="今日用电量 (kWh)")
+    month_kwh: float = Field(..., description="本月用电量 (kWh)")
+    today_mom_pct: float = Field(default=0.0, description="今日环比昨日 (%)")
+    month_mom_pct: float = Field(default=0.0, description="本月环比上月 (%)")
+
+
+class DeviceRank(BaseModel):
+    """设备用电排名。"""
+    rank_type: str = Field(..., description="排名类型: factory(全厂) / room(机房)")
+    items: list[dict] = Field(default_factory=list, description="排名列表 [{name, value_kwh, proportion_pct?}]")
+    room_cop_instant: Optional[float] = Field(default=None, description="机房瞬时COP（仅 rank_type=room 时返回）")
+    room_cop_avg: Optional[float] = Field(default=None, description="机房累计COP（仅 rank_type=room 时返回）")
+
+
+class EnvironmentParams(BaseModel):
+    """室外环境参数。"""
+    outdoor_temp_c: float = Field(..., description="室外温度 (°C)")
+    outdoor_humidity_pct: float = Field(..., description="室外湿度 (%)")
+    wet_bulb_temp_c: float = Field(..., description="湿球温度 (°C)")
+    enthalpy_kj_kg: float = Field(..., description="焓值 (kJ/kg)")
+
+
+class EfficiencyCalendarDay(BaseModel):
+    """能效日历-日度数据。"""
+    date: str = Field(..., description="日期 (YYYY-MM-DD)")
+    cop: float = Field(..., description="当日 COP")
+    cool_kwh: float = Field(..., description="制冷量 (kWh)")
+    electricity_kwh: float = Field(..., description="用电量 (kWh)")
+    is_today: bool = Field(default=False, description="是否当天")
+
+
+class EfficiencyCalendarMonth(BaseModel):
+    """能效日历-月度汇总。"""
+    month: str = Field(..., description="月份 (YYYY-MM)")
+    current_cop: float = Field(..., description="当月 COP")
+    average_cop: float = Field(..., description="平均 COP")
+    electricity_kwh: float = Field(..., description="用电量 (kWh)")
+    cool_kwh: float = Field(..., description="制冷量 (kWh)")
+    cool_price: float = Field(default=0.0, description="冷价 (元/kWh)")
+    electricity_charge: float = Field(default=0.0, description="电费 (元)")
+    electricity_price: float = Field(default=0.0, description="电价 (元/kWh)")

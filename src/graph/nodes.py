@@ -27,6 +27,13 @@ _TOOL_CATEGORY: Dict[str, str] = {
     "fetch_cop_data": "monitor",
     "fetch_energy_summary": "monitor",
     "fetch_active_alarms": "alarm",
+    "fetch_carbon_info": "monitor",
+    "fetch_photovoltaic_monthly": "monitor",
+    "fetch_energy_usage": "monitor",
+    "fetch_device_rank": "monitor",
+    "fetch_environment_params": "monitor",
+    "fetch_efficiency_calendar": "monitor",
+    "fetch_efficiency_detail": "monitor",
     "fetch_energy_range": "export",
     "fetch_alarm_history": "alarm",
     "query_timedit_forecast": "energy",
@@ -90,6 +97,38 @@ def _get_llm(bind_tools: bool = False) -> Any:
     return llm.bind_tools(TOOL_SCHEMAS) if bind_tools else llm
 
 
+def _build_route_table_md() -> str:
+    """从 routes.yaml 动态构建路由表 Markdown，注入到 system prompt 中。
+
+    Returns:
+        格式化的路由表 Markdown 字符串，按 category 分组。
+    """
+    routes_config = settings.routes
+    accessible = routes_config.get("accessible_routes", [])
+
+    if not accessible:
+        return ""
+
+    lines = ["\n## 可用路由表（福加能碳管理平台真实路由）\n"]
+
+    # 按 category 分组
+    from collections import OrderedDict
+    categories: dict = OrderedDict()
+    for route in accessible:
+        cat = route.get("category", "其他")
+        categories.setdefault(cat, []).append(route)
+
+    for cat, routes in categories.items():
+        lines.append(f"### {cat}类")
+        lines.append("| 路由 | 页面名称 | 适用场景 |")
+        lines.append("|------|---------|---------|")
+        for r in routes:
+            lines.append(f"| `{r['path']}` | {r['name']} | {r['description']} |")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
 def cognitive_parser_node(state: AgentState) -> Dict[str, Any]:
     """意图解析节点：分析用户输入，决定调用哪些 V3 引擎工具。
 
@@ -103,6 +142,11 @@ def cognitive_parser_node(state: AgentState) -> Dict[str, Any]:
     if not messages:
         prompts = _load_prompts()
         system_content = prompts.get("cognitive_parser", {}).get("system", "")
+
+        # 动态注入路由表（从 routes.yaml 读取，保持与代码侧同步）
+        route_table = _build_route_table_md()
+        if route_table:
+            system_content += route_table
 
         # 注入当前日期
         from datetime import datetime

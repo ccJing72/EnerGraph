@@ -93,12 +93,30 @@ class RouteRegistry:
 _route_registry = RouteRegistry()
 
 
-# 工具 → 路由映射（Java 后端工具自动推断跳转目标）
-_TOOL_ROUTE_MAP: Dict[str, str] = {
-    "fetch_cop_data": "/smart-maintenance/equipment-operation",
-    "fetch_energy_summary": "/analysis/consumption-panel",
-    "fetch_active_alarms": "/alarm/realtime",
-}
+def _build_tool_route_map() -> Dict[str, List[str]]:
+    """从 routes.yaml 动态构建工具→路由映射。
+
+    遍历所有路由配置，收集每个工具对应的页面路由。
+    一个工具可以映射到多个路由（如 fetch_energy_summary 对应能耗分析和光储）。
+
+    Returns:
+        {tool_name: [route_path, ...], ...}
+    """
+    tool_map: Dict[str, List[str]] = {}
+    routes_config = settings.routes
+    all_routes = routes_config.get("accessible_routes", []) + routes_config.get("restricted_routes", [])
+    for route in all_routes:
+        for tool in route.get("tools", []):
+            path = route["path"]
+            if tool not in tool_map:
+                tool_map[tool] = []
+            if path not in tool_map[tool]:
+                tool_map[tool].append(path)
+    return tool_map
+
+
+# 启动时从 routes.yaml 构建一次
+_TOOL_ROUTE_MAP: Dict[str, List[str]] = _build_tool_route_map()
 
 
 class UIRouterSkill(BaseSkill):
@@ -114,6 +132,13 @@ class UIRouterSkill(BaseSkill):
         "fetch_cop_data",
         "fetch_energy_summary",
         "fetch_active_alarms",
+        "fetch_carbon_info",
+        "fetch_photovoltaic_monthly",
+        "fetch_energy_usage",
+        "fetch_device_rank",
+        "fetch_environment_params",
+        "fetch_efficiency_calendar",
+        "fetch_efficiency_detail",
     ]
     prompt_keys = ["action_agent_nav_hint"]
     description = "监控页面查询与跳转（实时 COP、能耗、报警，下发页面跳转信号）"
@@ -181,14 +206,16 @@ class UIRouterSkill(BaseSkill):
 
         # 兜底：Java 后端工具 → 自动推断跳转路由（跳过已存在路由）
         for name, result, args in tool_results:
-            route = _TOOL_ROUTE_MAP.get(name)
-            if route and "error" not in result and route not in seen_routes:
-                seen_routes.add(route)
-                params = {k: v for k, v in args.items() if v is not None}
-                action = UIAction(type="navigate", route=route, params=params)
-                actions.append(action)
-                logger.info(
-                    f"UIRouterSkill: 根据 {name} 自动推断跳转 → {route}"
-                )
+            routes = _TOOL_ROUTE_MAP.get(name)
+            if routes and "error" not in result:
+                for route in routes:
+                    if route not in seen_routes:
+                        seen_routes.add(route)
+                        params = {k: v for k, v in args.items() if v is not None}
+                        action = UIAction(type="navigate", route=route, params=params)
+                        actions.append(action)
+                        logger.info(
+                            f"UIRouterSkill: 根据 {name} 自动推断跳转 → {route}"
+                        )
 
         return actions

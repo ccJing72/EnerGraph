@@ -1,17 +1,21 @@
 """FastAPI 服务层 — Action Agent HTTP API
 
 所属层：services
-依赖：fastapi, uvicorn, src.graph.builder, src.schemas
+依赖：fastapi, uvicorn, src.graph.builder, src.schemas, src.config.settings
 对接 V3 引擎：N/A（通过 Graph 间接调用 Tools）
 """
 import json
 import logging
+import secrets
 from typing import AsyncIterator, List
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Security
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core.messages import AIMessageChunk
 
+from src.config.settings import settings
 from src.graph.builder import graph
 from src.schemas.action_agent import ActionAgentInput, UIAction
 from src.schemas.v3_engine import IntentItem
@@ -21,8 +25,35 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="EnerGraph Action Agent",
     description="青山 V3 多模态调度 Agent HTTP API",
-    version="0.2.0",
+    version="0.3.0",
 )
+
+# ── CORS 中间件 ──────────────────────────────────────────────────
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.api.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ── 鉴权（可选） ─────────────────────────────────────────────────
+_security = HTTPBearer(auto_error=False)
+
+
+async def _verify_api_key(
+    credentials: HTTPAuthorizationCredentials = Security(_security),
+) -> None:
+    """Bearer Token 鉴权。api_key 为空时跳过（开发模式）。
+
+    Raises:
+        HTTPException: 401 — 密钥不匹配
+    """
+    expected = settings.api.api_key
+    if not expected:
+        return  # 开发模式，不鉴权
+    if credentials is None or not secrets.compare_digest(credentials.credentials, expected):
+        raise HTTPException(status_code=401, detail="无效的 API Key")
 
 
 @app.get("/health")
@@ -36,7 +67,10 @@ async def health() -> dict:
 
 
 @app.post("/invoke")
-async def invoke(input_data: ActionAgentInput) -> JSONResponse:
+async def invoke(
+    input_data: ActionAgentInput,
+    _: None = Depends(_verify_api_key),
+) -> JSONResponse:
     """同步运行 Agent，返回最终报告和 UI 动作列表。
 
     接收用户输入和可选页面上下文，经过完整的 ReAct 循环后，
@@ -132,7 +166,10 @@ async def _sse_generator(input_data: ActionAgentInput) -> AsyncIterator[str]:
 
 
 @app.post("/stream")
-async def stream(input_data: ActionAgentInput) -> StreamingResponse:
+async def stream(
+    input_data: ActionAgentInput,
+    _: None = Depends(_verify_api_key),
+) -> StreamingResponse:
     """流式运行 Agent，以 SSE 格式推送 text / intent_plan / action / done 事件。
 
     Args:

@@ -1,8 +1,8 @@
-"""工具注册表 — V3 引擎 Mock Tools + HVAC 知识库
+"""工具注册表 — V3 引擎 Mock Tools + HVAC 知识库 + 福加真实 API Tools
 
 所属层：tools
 依赖：src.tools.*
-对接 V3 引擎：PhysicsAI / TimeDiT / AIDC_Cooling / HVAC RAG
+对接 V3 引擎：PhysicsAI / TimeDiT / AIDC_Cooling / HVAC RAG / 福加监控 API
 """
 from typing import Any, Callable, Dict
 
@@ -11,7 +11,18 @@ from src.tools.query_timedit import query_timedit_forecast
 from src.tools.verify_physics import verify_physics_consistency
 from src.tools.fetch_aidc_cooling import fetch_aidc_cooling_status
 from src.tools.query_hvac_knowledge import query_hvac_knowledge
-from src.tools.java_backend import fetch_cop_data, fetch_energy_summary, fetch_active_alarms
+from src.tools.java_backend import (
+    fetch_cop_data,
+    fetch_energy_summary,
+    fetch_active_alarms,
+    fetch_carbon_info,
+    fetch_photovoltaic_monthly,
+    fetch_energy_usage,
+    fetch_device_rank,
+    fetch_environment_params,
+    fetch_efficiency_calendar,
+    fetch_efficiency_detail,
+)
 from src.tools.navigate_to_page import navigate_to_page
 
 TOOL_REGISTRY: Dict[str, Callable[..., Dict[str, Any]]] = {
@@ -23,6 +34,13 @@ TOOL_REGISTRY: Dict[str, Callable[..., Dict[str, Any]]] = {
     "fetch_cop_data": fetch_cop_data,
     "fetch_energy_summary": fetch_energy_summary,
     "fetch_active_alarms": fetch_active_alarms,
+    "fetch_carbon_info": fetch_carbon_info,
+    "fetch_photovoltaic_monthly": fetch_photovoltaic_monthly,
+    "fetch_energy_usage": fetch_energy_usage,
+    "fetch_device_rank": fetch_device_rank,
+    "fetch_environment_params": fetch_environment_params,
+    "fetch_efficiency_calendar": fetch_efficiency_calendar,
+    "fetch_efficiency_detail": fetch_efficiency_detail,
     "navigate_to_page": navigate_to_page,
 }
 
@@ -84,11 +102,11 @@ TOOL_SCHEMAS = [
     },
     {
         "name": "fetch_cop_data",
-        "description": "获取冷水机组的实时 COP（能效比）数据，包括瞬时 COP、累计 COP、进出水温度、实时功率等",
+        "description": "获取冷水机房的 COP（能效比）数据：机房COP（水系统平均COP，含冷水机+水泵+冷却塔整体）和机组COP（仅冷水机组本体）。回答机房COP、能效、冷水机组性能时使用",
         "parameters": {
             "type": "object",
             "properties": {
-                "site_id": {"type": "string", "description": "站点 ID，如 SH-01"},
+                "site_id": {"type": "string", "description": "站点 ID，如 FJJB000001"},
                 "chiller_id": {"type": "string", "description": "冷水机组编号，默认 CH-01"},
             },
             "required": ["site_id"],
@@ -100,7 +118,7 @@ TOOL_SCHEMAS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "site_id": {"type": "string", "description": "站点 ID，如 SH-01"},
+                "site_id": {"type": "string", "description": "站点 ID，如 FJJB000001"},
                 "date": {"type": "string", "description": "统计日期，格式 YYYY-MM-DD"},
             },
             "required": ["site_id", "date"],
@@ -112,9 +130,90 @@ TOOL_SCHEMAS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "site_id": {"type": "string", "description": "站点 ID，如 SH-01"},
+                "site_id": {"type": "string", "description": "站点 ID，如 FJJB000001"},
             },
             "required": ["site_id"],
+        },
+    },
+    {
+        "name": "fetch_carbon_info",
+        "description": "获取碳排信息：本月光伏发电量(kWh)、碳减排量(kgCO₂e)、累计碳减排、环比数据。回答光伏、碳减排、绿电等问题时使用",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "site_id": {"type": "string", "description": "站点 ID，如 FJJB000001"},
+            },
+            "required": ["site_id"],
+        },
+    },
+    {
+        "name": "fetch_photovoltaic_monthly",
+        "description": "获取光伏月度发电量和收益明细，返回按月列表（每月发电量kWh + 收益元）。回答光伏收益、月度发电量趋势时使用",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "site_id": {"type": "string", "description": "站点 ID，如 FJJB000001"},
+            },
+            "required": ["site_id"],
+        },
+    },
+    {
+        "name": "fetch_energy_usage",
+        "description": "获取全厂用电量：今日用电量(kWh)、本月用电量(kWh)、环比昨日/上月百分比。回答用电量、电费、用电趋势时使用",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "site_id": {"type": "string", "description": "站点 ID，如 FJJB000001"},
+            },
+            "required": ["site_id"],
+        },
+    },
+    {
+        "name": "fetch_device_rank",
+        "description": "获取设备用电排名。rank_type=factory 返回全厂 Top5 设备排名(MWh)，rank_type=room 返回机房设备能耗占比和 COP",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "site_id": {"type": "string", "description": "站点 ID，如 FJJB000001"},
+                "rank_type": {"type": "string", "description": "排名类型: factory(全厂设备排名) 或 room(机房设备排名)", "default": "factory"},
+            },
+            "required": ["site_id"],
+        },
+    },
+    {
+        "name": "fetch_environment_params",
+        "description": "获取室外环境参数：温度(°C)、湿度(%)、湿球温度(°C)、焓值(kJ/kg)。回答天气、环境、温湿度等问题时使用",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "site_id": {"type": "string", "description": "站点 ID，如 FJJB000001"},
+            },
+            "required": ["site_id"],
+        },
+    },
+    {
+        "name": "fetch_efficiency_calendar",
+        "description": "获取能效日历数据。mode=day 返回当月每天的 COP/制冷量/用电量，mode=month 返回月度汇总（COP/制冷量/电费/电价）。回答能效日历、每日COP、月度能效评价时使用",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "site_id": {"type": "string", "description": "站点 ID，如 FJJB000001"},
+                "date": {"type": "string", "description": "查询日期，格式 YYYY-MM（如 2026-06），默认当月"},
+                "mode": {"type": "string", "description": "模式: day(日度数据) 或 month(月度汇总)", "default": "day"},
+            },
+            "required": ["site_id"],
+        },
+    },
+    {
+        "name": "fetch_efficiency_detail",
+        "description": "通用能效查询：按参数名查询机房任意能效指标的当前值。可用参数: 水系统平均COP, 冷水主机平均COP, 水系统平均SCOP, 水系统瞬时制冷量, 水系统累计制冷量, 水系统瞬时功率, 水系统累计电能, 水系统热平衡系数。用户问到具体设备级参数（如某台冷水机组的COP、某个水泵的功率）时，回答'该参数暂不支持自动查询'并跳转到 /analysis/query 让用户自行查看",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "site_id": {"type": "string", "description": "站点 ID，如 FJJB000001"},
+                "param_name": {"type": "string", "description": "查询参数名，可选值: 水系统平均COP, 冷水主机平均COP, 水系统平均SCOP, 水系统瞬时制冷量, 水系统累计制冷量, 水系统瞬时功率, 水系统累计电能, 水系统热平衡系数"},
+            },
+            "required": ["site_id", "param_name"],
         },
     },
     {

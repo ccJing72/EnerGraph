@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 # 加载 .env 文件
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -52,6 +52,14 @@ class OutputConfig(BaseModel):
     format: str = Field(default="markdown", description="输出格式")
 
 
+class ApiConfig(BaseModel):
+    """API 服务配置"""
+    host: str = Field(default="0.0.0.0", description="服务监听地址")
+    port: int = Field(default=8000, ge=1, le=65535, description="服务端口")
+    cors_origins: List[str] = Field(default_factory=lambda: ["*"], description="CORS 允许的源列表")
+    api_key: str = Field(default="", description="API 鉴权密钥，空字符串表示不启用鉴权")
+
+
 class AppConfig(BaseModel):
     """应用顶层配置"""
     model: ModelConfig = Field(default_factory=ModelConfig)
@@ -59,12 +67,11 @@ class AppConfig(BaseModel):
     rag: RAGConfig = Field(default_factory=RAGConfig)
     tools: List[ToolDef] = Field(default_factory=list)
     output: OutputConfig = Field(default_factory=OutputConfig)
+    api: ApiConfig = Field(default_factory=ApiConfig)
     prompts: Dict[str, Any] = Field(default_factory=dict)
     routes: Dict[str, Any] = Field(default_factory=dict)
 
-    class Config:
-        """允许任意类型字段"""
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 def _load_prompts() -> Dict[str, Any]:
@@ -127,6 +134,9 @@ def _apply_env_overrides(config: Dict[str, Any]) -> Dict[str, Any]:
         "AGENT_TEMPERATURE": ("model", "temperature"),
         "AGENT_MAX_ITERATIONS": ("agent", "max_iterations"),
         "LOG_LEVEL": ("log_level", None),
+        "API_HOST": ("api", "host"),
+        "API_PORT": ("api", "port"),
+        "API_KEY": ("api", "api_key"),
     }
 
     for env_var, (section, key) in env_map.items():
@@ -144,6 +154,13 @@ def _apply_env_overrides(config: Dict[str, Any]) -> Dict[str, Any]:
                 config[section][key] = float(value)
             elif value.lower() in ("true", "false"):
                 config[section][key] = value.lower() == "true"
+
+    # API_CORS_ORIGINS: 逗号分隔的列表
+    cors_origins = os.getenv("API_CORS_ORIGINS")
+    if cors_origins is not None:
+        config.setdefault("api", {})["cors_origins"] = [
+            o.strip() for o in cors_origins.split(",") if o.strip()
+        ]
 
     return config
 

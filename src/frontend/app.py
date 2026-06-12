@@ -13,14 +13,26 @@ if str(_src_root) not in sys.path:
 
 import streamlit as st
 
+from src.config.settings import settings
 from src.graph.builder import graph
 
-# 路由名称映射（共用于建议框和链接生成）
-_ROUTE_NAMES = {
-    "/analysis/consumption-panel": "能耗分析面板",
-    "/smart-maintenance/equipment-operation": "设备运行监控",
-    "/alarm/realtime": "实时报警",
-}
+
+def _build_route_names() -> dict:
+    """从 routes.yaml 动态构建路由→名称映射。
+
+    Returns:
+        {route_path: display_name, ...}
+    """
+    route_names = {}
+    routes_config = settings.routes
+    all_routes = routes_config.get("accessible_routes", []) + routes_config.get("restricted_routes", [])
+    for route in all_routes:
+        route_names[route["path"]] = route["name"]
+    return route_names
+
+
+# 启动时从 routes.yaml 构建一次
+_ROUTE_NAMES = _build_route_names()
 
 st.set_page_config(page_title="青山 V3 多模态调度 Agent", layout="wide")
 st.title("青山 V3 多模态调度 Agent")
@@ -67,9 +79,9 @@ with st.sidebar:
         if st.button(ex, use_container_width=True, key=f"hvac_{ex[:20]}"):
             st.session_state.pending_input = ex
 
-    st.markdown("**多意图测试（Phase 7）**")
+    st.markdown("**多意图测试**")
     multi_intent_examples = [
-        "查一下冷水机房的 COP，顺便看看今天的能耗汇总",
+        "查一下今天的光伏发电量，顺便看看今天的能耗汇总",
         "冷水机房 COP 多少？有没有报警？",
         "帮我查一下今天的能耗，再看看光伏发电情况",
         "查 COP，导出近十天能耗，看看有没有报警",
@@ -82,15 +94,27 @@ with st.sidebar:
         st.session_state.chat_history = []
         st.rerun()
 
-# 显示历史对话
+# 显示历史对话（步骤/意图/来源在上，回答在下）
 for msg in st.session_state.chat_history:
     with st.chat_message(msg["role"]):
+        if msg["role"] == "assistant":
+            # 1. 步骤进度（rerun 后恢复）
+            if msg.get("steps"):
+                st.markdown("\n".join(msg["steps"]))
+            # 2. 多意图计划（Phase 7）
+            if msg.get("intent_display"):
+                st.markdown("**🧩 识别到多个意图：**")
+                for item in msg["intent_display"]:
+                    st.markdown(f"- {item}")
+                st.divider()
+            # 3. 工具详情 / RAG 来源（可折叠，在回答上方）
+            if msg.get("details"):
+                with st.expander("📋 工具调用详情 & 知识库来源", expanded=False):
+                    for label, data in msg["details"].items():
+                        st.subheader(label)
+                        st.json(data)
+        # 4. 回答内容（含底部跳转链接）
         st.markdown(msg["content"])
-        if msg["role"] == "assistant" and msg.get("details"):
-            with st.expander("📋 工具调用详情 & 知识库来源", expanded=False):
-                for label, data in msg["details"].items():
-                    st.subheader(label)
-                    st.json(data)
 
 # 处理侧边栏示例按钮触发
 if "pending_input" in st.session_state:
@@ -272,7 +296,13 @@ if user_input:
                 st.warning(f"警告: {result['error']}")
 
             st.session_state.chat_history.append(
-                {"role": "assistant", "content": final, "details": details}
+                {
+                    "role": "assistant",
+                    "content": final,
+                    "details": details,
+                    "steps": steps,
+                    "intent_display": intent_items if intent_plan else None,
+                }
             )
 
         except Exception as e:

@@ -27,3 +27,10 @@ rag:
 output:
   language: "zh"
   format: "markdown"
+
+# API 服务配置
+api:
+  host: "0.0.0.0"                   # .env API_HOST 覆盖
+  port: 8000                        # .env API_PORT 覆盖
+  cors_origins: ["*"]               # .env API_CORS_ORIGINS 覆盖（逗号分隔），生产环境应限定具体域名
+  api_key: ""                       # .env API_KEY 覆盖；空 = 不启用鉴权（开发模式），填值后前端需带 Bearer token

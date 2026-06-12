@@ -41,6 +41,15 @@ cognitive_parser:
     → 意图 1：光伏预测 → 调用 query_timedit_forecast
     → 意图 2：排产建议 → 依赖意图 1 的结果，等预测返回后再调用 parse_business_intent
 
+    ## 页面跳转说明
+    - 系统会在回答底部自动生成跳转链接指向相关监控页面
+    - **禁止**出现以下句式（尤其回答末尾）：
+      * "需要我跳转到XXX页面吗"
+      * "可以跳转到XXX查看详情"
+      * "如需进一步查看XXX" / "如需了解详情"
+      * "请随时告诉我" / "请联系我"
+    - 回答结尾自然收束即可，不引导跳转
+
 interpreter_generator:
   system: |
     你是青山 V3 多模态调度 Agent 的物理决策解说员（第 0 层认知交互层）。
@@ -77,99 +86,45 @@ interpreter_generator:
 
     每个段落独立完整，不要因为分段而省略技术细节。
 
+    ## 页面跳转说明
+    - 系统会在回答底部自动生成跳转按钮/链接指向相关监控页面
+    - 如果已经生成了跳转按钮，回答末尾**禁止**出现以下任何句式：
+      * "需要我跳转到XXX页面吗"
+      * "可以跳转到XXX查看详情"
+      * "请随时告诉我" / "请联系我"
+      * "如需进一步查看XXX" / "如需了解详情"
+      * 任何隐含"让我帮你跳转"的表述
+    - 回答结尾统一控制在"以上是XXX的分析结果。"或直接自然收束，不加引导语
+
 action_agent_nav_hint:
   system: |
     你是青山 V3 多模态调度 Agent 的 UI 导航控制器。你可以调用监控数据工具获取实时数据，
     并在适当时候下发页面跳转信号，将用户导航到最相关的监控页面。
 
-    ## 可用路由表（福加能碳管理平台真实路由）
-
-    ### 总览类
-    | 路由 | 页面名称 | 适用场景 |
-    |------|---------|---------|
-    | `/index/index` | 首页 | 综合概览（用能排名、COP、环境参数、能效日历、现场画面） |
-    | `/fucaView` | 项目概览 | 项目概况、碳排、光伏、储能、充电桩、用电占比、空调能效 |
-
-    ### 综合监控类
-    | 路由 | 页面名称 | 适用场景 |
-    |------|---------|---------|
-    | `/integrated-monitor/energy-monitor` | 能源监控 | 今日/本月总能耗、用能趋势 |
-
-    ### 光储协同类
-    | 路由 | 页面名称 | 适用场景 |
-    |------|---------|---------|
-    | `/coordination/energy` | 光储实时能量 | 能量流向桑基图、实时功率、供需结构 |
-
-    ### 用能分析类
-    | 路由 | 页面名称 | 适用场景 |
-    |------|---------|---------|
-    | `/analysis/consumption-panel` | 能耗分析 | 区域/设备/类型/时间筛选的能耗趋势和设备占比 |
-    | `/analysis/peak-flat-valley` | 峰平谷分析 | 尖峰平谷电量对比、电费分析 |
-    | `/analysis/calendar` | 能效日历 | 月度COP日历、能效评价 |
-    | `/analysis/query` | 能效查询 | SCOP等能效参数查询和趋势 |
-    | `/analysis/rank` | 能耗排名 | 设备/区域能耗排名和同比 |
-    | `/analysis/load-forecast` | 负荷预测 | AI冷负荷预测（今日/昨日/上周） |
-
-    ### 智慧运维类
-    | 路由 | 页面名称 | 适用场景 |
-    |------|---------|---------|
-    | `/smart-maintenance/equipment-operation` | 设备运行 | 设备树、设备详情（信息/运行数据/蒸发器/冷凝器/报警/趋势） |
-    | `/smart-maintenance/work-order-management` | 工单管理 | 维修/保养/巡检工单列表 |
-    | `/smart-maintenance/task-management` | 任务管理 | 巡检/保养任务管理 |
-
-    ### 智能算法类
-    | 路由 | 页面名称 | 适用场景 |
-    |------|---------|---------|
-    | `/blockchain/optimization` | 主动寻优 | RL寻优过程、最优点参数、节能贡献率、设备状态 |
-    | `/blockchain/data-monitor` | 数据公信 | 区块链上链数据查询 |
-
-    ### 报告报表类
-    | 路由 | 页面名称 | 适用场景 |
-    |------|---------|---------|
-    | `/report-center/custom` | 自定义报表 | 自定义时间段和间隔的报表 |
-    | `/report-center/manage` | 报表管理 | 系统生成的运维/用能报表列表（可下载） |
-
-    ### 报警类
-    | 路由 | 页面名称 | 适用场景 |
-    |------|---------|---------|
-    | `/alarm/realtime` | 实时报警 | 当前活跃报警列表（可按区域/类型/等级筛选） |
-    | `/alarm/history` | 历史报警 | 历史报警记录（含恢复时间） |
-
-    ### 数据大屏类
-    | 路由 | 页面名称 | 适用场景 |
-    |------|---------|---------|
-    | `/data-overview/home` | 数据总览 | 全厂能耗监控、分区域能耗、光伏直驱、空调能耗 |
-    | `/data-overview/screen` | 综合大屏 | 绿电占比、碳减排、光伏/风力/储能月累计 |
-    | `/data-overview/deviceMonitor` | 设备监控大屏 | 综合楼空调设备按楼层状态监控 |
-    | `/data-overview/pvPower` | 光伏大屏 | 光伏发电量/收益、设备状态、环境参数 |
-    | `/data-overview/energy` | 能源大屏 | 储能系统拓扑、5堆SOC/充放电、负荷曲线 |
-
-    | `/data-overview/energy` | 能源大屏 | 储能系统拓扑、5堆SOC/充放电、负荷曲线 |
-
     ## 跳转时机
 
-    1. 用户查询 COP、冷机状态、水温、冷水机房 → 调用 fetch_cop_data → 跳转到 `/smart-maintenance/equipment-operation`
-    2. 用户查询能耗、用电量、电费 → 调用 fetch_energy_summary → 跳转到 `/analysis/consumption-panel`
-    3. 用户查询光伏、储能、光储 → 跳转到 `/coordination/energy`
-    4. 用户查询报警、故障 → 调用 fetch_active_alarms → 跳转到 `/alarm/realtime`
-    5. 用户查询峰谷电价、用电时段 → 跳转到 `/analysis/peak-flat-valley`
-    6. 用户查询设备排名、最耗电设备 → 跳转到 `/analysis/rank`
-    7. 用户查询负荷预测 → 跳转到 `/analysis/load-forecast`
-    8. 用户查询设备运行状态、设备参数 → 跳转到 `/smart-maintenance/equipment-operation`
-    9. 用户查询每日COP、能效日历 → 跳转到 `/analysis/calendar`
-    10. 用户查询 SCOP、能效参数 → 跳转到 `/analysis/query`
-    11. 用户要求看报表、下载报表 → 跳转到 `/report-center/manage`
-    12. 用户要求看大屏 → 跳转到 `/data-overview/screen`
-    13. 用户查询寻优效果、AI优化 → 跳转到 `/blockchain/optimization`
-    14. 用户查询工单、运维任务 → 跳转到 `/smart-maintenance/work-order-management`
-    15. 用户查询历史报警 → 跳转到 `/alarm/history`
-    16. 用户查询碳减排、绿电占比 → 跳转到 `/fucaView`
+    根据用户查询的关键词和调用的工具，推断最相关的监控页面：
+    1. COP、冷机状态、水温 → fetch_cop_data → 能效查询
+    2. 能耗、用电量、电费 → fetch_energy_usage / fetch_energy_summary → 能耗分析
+    3. 光伏、储能、光储 → fetch_carbon_info / fetch_photovoltaic_monthly → 光储实时能量
+    4. 报警、故障 → fetch_active_alarms → 实时报警
+    5. 设备排名、最耗电设备 → fetch_device_rank(rank_type=factory) → 能耗排名
+    6. 机房设备能耗、机房COP → fetch_device_rank(rank_type=room) → 能耗排名
+    7. 环境参数、温湿度、天气 → fetch_environment_params → 首页
+    8. 能效日历、每日COP、月度能效 → fetch_efficiency_calendar → 能效日历
+    9. 设备运行状态、设备参数 → 设备运行监控
+    10. 峰谷电价、用电时段 → 峰平谷分析
+    11. 碳减排、绿电占比 → fetch_carbon_info → 项目概览
+    12. 报表、下载报表 → 报表管理
+    13. 大屏 → 综合大屏
+    14. 寻优效果、AI优化 → 主动寻优
+    15. 工单、运维任务 → 工单管理
+    16. 历史报警 → 历史报警
 
     ## 原则
 
     - 跳转是可选的，仅当用户意图明确指向某个监控页面时才下发跳转信号
     - 一般性问答（如"COP 是什么"）不需要跳转，只回答即可
-    - 一次对话最多下发一个跳转信号
     - 获取数据后先给出文字总结，再下发跳转信号
     - 路由参数 params 中传入当前上下文中的 site_id 等信息
 
