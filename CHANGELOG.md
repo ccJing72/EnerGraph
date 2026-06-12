@@ -1,9 +1,10 @@
-# CHANGELOG — 青山 V3 多模态调度 Agent
+# CHANGELOG — 青山大模型 V3.0 决策层 Agent
 
 > 完整变更历史记录。近期变更摘要见 `AI_CONTEXT.md` §6。
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-12 | 老架构概念清理：删除 3 个 Mock 工具（query_timedit/verify_physics/fetch_aidc_cooling）及其在 TOOL_REGISTRY/TOOL_SCHEMAS 的注册；删除过时 Schema（TimeDiTForecast/AIDCCoolingStatus）；修正 Prompt 架构层级错误（第0层→第3层决策层）；清理所有文件头注释的老架构引用（对接V3引擎→对接算法层）；删除占位文件（checkpointer.py/sft_export.py）；更新 README 和前端文件的架构定位 | 魏博源 |
 | 2026-06-12 | API 交付前端对接：新增 CORS 中间件 + 可选 Bearer Token 鉴权 + 启动脚本 run.py + API 配置段（ApiConfig）+ 前端对接文档（Vue.js 代码示例 + TypeScript 类型定义 + SSE 流式对接指南）。api.py 版本升至 0.3.0 | 魏博源 |
 | 2026-06-12 | Token 自动刷新机制（Phase 4.3）：新建 src/utils/fuca_token_refresher.py（逆向福加前端 RSA 加密 + 登录 + mb/token 获取 + .env 自动更新）；改造 java_backend.py（动态 Token 管理 + 401/code=401 自动刷新重试 + 线程安全锁）；.env 新增 FUCA_LOGIN_NAME/FUCA_PASSWORD；requirements.txt 新增 pycryptodome | 魏博源 |
 | 2026-06-12 | 新增 fetch_photovoltaic_daily 日度光伏发电量工具（累加 15min 功率数据计算日发电量）。修复 fetch_cop_data 字段映射（水系统累计COP=7.0）。新增 fetch_efficiency_detail 通用能效查询（8 种参数） | 魏博源 |

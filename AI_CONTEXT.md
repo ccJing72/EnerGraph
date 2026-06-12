@@ -1,7 +1,7 @@
-# EnerGraph（青山大模型） — 自演化智能能源 Agent 项目上下文
+# EnerGraph（青山大模型）— 自演化智能能源 Agent 项目上下文
 
 ## 项目状态
-**当前阶段**: Phase 1 完成 ✅ | Phase 2 完成 ✅ | Phase 3 完成 ✅ | Phase 4 大部分完成 ✅ | Phase 7 完成 ✅ | Skills 基类完成 ✅ | API 交付 ✅  
+**当前阶段**: Phase 1 完成 ✅ | Phase 2 完成 ✅ | Phase 3 完成 ✅ | Phase 4 大部分完成 ✅ | Phase 7 完成 ✅ | Skills 基类完成 ✅ | API 交付 ✅ | 老架构清理完成 ✅  
 **最后更新**: 2026-06-12  
 **项目性质**: 企业级落地方案，南京福加智能科技有限公司内部项目  
 **GitHub**: https://github.com/Webr1ng/EnerGraph.git  
@@ -303,11 +303,11 @@ EnerGraph/
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-12 | 老架构概念清理：删除 TimeDiT/PhysicsAI/AIDC 相关的 Mock 工具和 Schema，修正 Prompt 架构层级（第0层→第3层），清理文件头注释，删除占位文件 | 魏博源 |
 | 2026-06-12 | API 交付前端对接：CORS + Bearer Token 鉴权 + run.py 启动脚本 + ApiConfig + 前端对接文档（Vue.js + TypeScript） | 魏博源 |
 | 2026-06-12 | Token 自动刷新：fuca_token_refresher.py（RSA 加密登录 + mb/token 获取）+ java_backend.py 401 自动重试 + .env 自动更新 | 魏博源 |
 | 2026-06-12 | 新增 fetch_efficiency_detail 通用能效查询（8 种参数），修复 fetch_cop_data 改用正确 API | 魏博源 |
 | 2026-06-12 | Phase 4.2 代码审查重构：提取 API 公共函数、新增 fetch_photovoltaic_monthly、精简 nav_hint prompt | 魏博源 |
-| 2026-06-12 | Phase 4.2 Task 2-4：Chrome MCP 全量抓取 17 接口 + 9 工具接入真实 API（COP/报警/碳排/光伏/用电量/排名/环境/能效日历） | 魏博源 |
 
 > 更早历史见 `CHANGELOG.md` 或 `git log`。
 
