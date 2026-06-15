@@ -1,4 +1,4 @@
-"""nodes — V3 Agent LangGraph 节点实现
+"""nodes — 决策层 Agent LangGraph 节点实现
 
 所属层：graph
 依赖：langchain_core, src.tools, src.config.settings
@@ -6,10 +6,8 @@
 """
 import json
 import logging
-from pathlib import Path
 from typing import Any, Dict
 
-import yaml
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
 from src.config.settings import settings
@@ -18,7 +16,7 @@ from src.tools import TOOL_REGISTRY, TOOL_SCHEMAS
 
 logger = logging.getLogger(__name__)
 
-_PROMPTS_PATH = Path(__file__).resolve().parents[2] / "src" / "config" / "prompts.yaml"
+# Prompts 通过 settings.prompts 统一加载（支持多文件）
 _prompts: Dict[str, Any] = {}
 
 # Phase 7: 工具名 → 意图类别映射
@@ -48,27 +46,10 @@ _TOOL_FIELD_MAP: Dict[str, str] = {
 
 
 def _load_prompts() -> Dict[str, Any]:
+    """从 settings.prompts 获取 Prompt 字典（共享片段已由 settings 注入）。"""
     global _prompts
-    if not _prompts and _PROMPTS_PATH.exists():
-        with open(_PROMPTS_PATH, "r", encoding="utf-8") as f:
-            _prompts = yaml.safe_load(f) or {}
-        # 注入共享片段（_shared.answer_principles / _shared.jump_rules）
-        shared = _prompts.get("_shared", {})
-        if shared:
-            principles = shared.get("answer_principles", "")
-            jump_rules = shared.get("jump_rules", "")
-            for key in ("cognitive_parser", "interpreter_generator"):
-                system = _prompts.get(key, {}).get("system", "")
-                if principles and "## 回答原则" not in system:
-                    # 找到第一个空行之后的位置插入回答原则
-                    parts = system.split("\n\n", 1)
-                    if len(parts) == 2:
-                        system = parts[0] + f"\n\n## 回答原则\n{principles}" + parts[1]
-                    else:
-                        system += f"\n## 回答原则\n{principles}"
-                if jump_rules and "## 页面跳转说明" not in system:
-                    system += f"\n## 页面跳转说明\n{jump_rules}"
-                _prompts[key]["system"] = system
+    if not _prompts:
+        _prompts = settings.prompts or {}
     return _prompts
 
 
@@ -140,7 +121,7 @@ def _build_route_table_md() -> str:
 
 
 def cognitive_parser_node(state: AgentState) -> Dict[str, Any]:
-    """意图解析节点：分析用户输入，决定调用哪些 V3 引擎工具。
+    """意图解析节点：分析用户输入，决定调用哪些工具。
 
     Args:
         state: 当前 AgentState
@@ -206,7 +187,7 @@ def cognitive_parser_node(state: AgentState) -> Dict[str, Any]:
 
 
 def v3_engine_router_node(state: AgentState) -> Dict[str, Any]:
-    """引擎调度节点：执行 LLM 选择的 V3 工具，通过 BaseSkill 统一调度。
+    """引擎调度节点：执行 LLM 选择的工具，通过 BaseSkill 统一调度。
 
     Args:
         state: 当前 AgentState

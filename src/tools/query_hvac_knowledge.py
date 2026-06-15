@@ -2,7 +2,7 @@
 
 所属层：tools
 依赖：chromadb, src.schemas.v3_engine, src.config.settings
-对接 V3 引擎：N/A（本地向量库）
+对接算法层：N/A（本地向量库）
 
 Phase 3 升级：
   - T1: distance 阈值过滤，低置信度标记 low_confidence

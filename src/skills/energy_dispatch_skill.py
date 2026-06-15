@@ -12,7 +12,7 @@ SOP：
 
 Phase 4 时，算法模型通过 MCP Client 调用，此 Skill 编排调度流程。
 
-Prompt keys（src/config/prompts.yaml）：
+Prompt keys（src/config/prompts/powerai.yaml）：
   - energy_dispatch_intent : 能源调度意图解析指令
 """
 from typing import Any, Dict, List, Tuple

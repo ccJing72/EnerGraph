@@ -2,7 +2,7 @@
 
 所属层：tests
 依赖：pytest, unittest.mock
-对接 V3 引擎：N/A（Mock ChromaDB）
+对接算法层：N/A（Mock ChromaDB）
 
 测试范围：
   - T1: 相关度阈值过滤（low_confidence 标记）
@@ -254,10 +254,10 @@ class TestHVACExpertSkillExecute:
 
 
 class TestCitationFormat:
-    """验证 prompts.yaml 中的引用格式配置"""
+    """验证 prompts/hvac_expert.yaml 中的引用格式配置"""
 
     def test_citation_prompt_exists(self):
-        """prompts.yaml 中应包含 hvac_citation_format"""
+        """prompts/hvac_expert.yaml 中应包含 hvac_citation_format"""
         from src.graph.nodes import _load_prompts
         prompts = _load_prompts()
         assert "hvac_citation_format" in prompts
@@ -265,7 +265,7 @@ class TestCitationFormat:
         assert "依据" in content
 
     def test_refusal_prompt_exists(self):
-        """prompts.yaml 中应包含 hvac_refusal"""
+        """prompts/hvac_expert.yaml 中应包含 hvac_refusal"""
         from src.graph.nodes import _load_prompts
         prompts = _load_prompts()
         assert "hvac_refusal" in prompts

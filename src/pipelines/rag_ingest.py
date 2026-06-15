@@ -2,7 +2,7 @@
 
 所属层：pipelines
 依赖：chromadb, python-dotenv
-对接 V3 引擎：N/A
+对接算法层：N/A
 """
 import json
 import re

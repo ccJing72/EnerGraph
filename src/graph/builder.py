@@ -1,8 +1,8 @@
-"""builder — 组装并编译 V3 LangGraph 状态图
+"""builder — 组装并编译决策层 LangGraph 状态图
 
 所属层：graph
 依赖：langgraph, src.graph.*
-对接 V3 引擎：N/A
+对接算法层：N/A
 """
 from langgraph.graph import END, StateGraph
 
@@ -16,7 +16,7 @@ from src.graph.state import AgentState
 
 
 def build_graph():
-    """构建并返回编译后的 V3 调度 Agent 状态图。"""
+    """构建并返回编译后的决策层调度 Agent 状态图。"""
     g = StateGraph(AgentState)
 
     g.add_node("cognitive_parser", cognitive_parser_node)

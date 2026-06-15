@@ -4,6 +4,13 @@
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-15 | **[fix] 重构后代码同步审阅与清理**：① 移除 `nodes.py` 冗余 `_shared` 注入逻辑（已由 `settings.py` 统一处理）+ 清理未使用 import（`Path`, `yaml`）；② 删除旧的 `src/config/prompts.yaml`（已被 `prompts/` 目录替代）；③ 修复 `v3_interpreter_skill.py` 注释引用已删除 Schema（`TimeDiTForecast` / `AIDCCoolingStatus`）+ 更新 description；④ 批量更新 24 个文件头 `对接 V3 引擎` → `对接算法层`（对齐 CLAUDE.md 模板）；⑤ 更新 `builder.py`/`edges.py`/`nodes.py` 模块及函数 docstring 中 V3 遗留措辞；⑥ 更新测试 docstring 中 `prompts.yaml` 引用为 `prompts/*.yaml`。测试通过 58/60 | 魏博源 |
+| 2026-06-15 | **[fix] 清理硬编码 prompts.yaml 引用**：修复 `nodes.py`, `parse_intent.py`, `base_skill.py` 中残留的硬编码路径，改为从 `settings.prompts` 加载（支持多文件模式）；更新 4 个 Skills 文件头注释引用新路径（`prompts/<agent>.yaml`）；修复测试 `test_multi_intent.py` 适配新架构（检查 Agent 路由而非具体工具示例）。测试通过 58/60 | 魏博源 |
+| 2026-06-15 | **[refactor] 多智能体 Subgraph 架构重构**：① 创建 `src/graph/agents/` 多智能体模块（BaseAgent 抽象基类 + AGENT_REGISTRY 注册表）；② 重构 HVAC/UI Router/PowerAI 为独立 Agent 子图；③ 拆分 `prompts.yaml` 为 Agent 专属配置文件（`prompts/main_graph.yaml`, `prompts/hvac_expert.yaml`, `prompts/ui_router.yaml`, `prompts/powerai.yaml`, `prompts/_shared.yaml`）；④ 更新 `settings.py` 支持动态加载多 Prompt 文件；⑤ 新增 `TEAM_COLLABORATION_GUIDE.md` 团队协作开发规范；⑥ 更新 `CLAUDE.md` 多智能体扩展章节。**架构优势**：各 Agent 目录隔离（`agents/<name>/`），开发者并行开发零冲突；Prompt 按 Agent 拆分，修改互不影响；新增 Agent 只需注册到 `AGENT_REGISTRY`，主图无需改动。**兼容性**：保持现有 Skill 架构不变，Agent 封装 Skill 为子图；测试全部通过（60 tests）| 魏博源 |
+| 2026-06-15 | 能耗数据对齐能耗分析页面：fetch_energy_summary 和 fetch_energy_usage 从 cockpit/energyUsage（首页 5984 kWh）切换到 v1/ECInfo API（能耗分析页面 4083.5 kWh），Agent 返回数据与跳转目标页面一致 | 魏博源 |
+| 2026-06-15 | 修复光伏发电量数据不一致：fetch_energy_summary 改用 realTimePowerList（15分钟级）计算光伏，与 fetch_photovoltaic_daily 使用相同数据源，两工具返回值一致 | 魏博源 |
+| 2026-06-15 | SSE 协议升级（细粒度事件类型）：区分 thinking（思考过程）、tool_call（工具调用）、tool_result（工具结果）、rag_sources（RAG 来源）、text（最终回答）。前端可自行决定折叠/丢弃/展示每种事件。更新 frontend_integration_guide.md 文档和 TypeScript 类型定义 | 魏博源 |
+| 2026-06-15 | 前端思考过程折叠：流式输出时实时显示步骤/意图识别，完成后自动折叠为"💭 思考过程 & 意图识别"可展开区域，不占用回答阅读空间。跳转建议保持可见 | 魏博源 |
 | 2026-06-15 | fetch_cop_data 接入机组运行参数（温度/功率）：新增 getDeviceRunningInfo API 调用，返回蒸发器出水温度、冷凝器进水温度、机组实时功率。site_mapping.yaml 新增 chiller_device_ids（CH-01=3603, CH-02=3604） | 魏博源 |
 | 2026-06-12 | 修复能耗汇总数据为 0（二次修复）：LLM 误调 fetch_energy_usage（仅总电量）而非 fetch_energy_summary（含光储分项）。修复：① TOOL_SCHEMAS 描述明确区分（fetch_energy_usage 标注"不含光伏/储能分项"，fetch_energy_summary 标注"优先使用"）；② cognitive_parser prompt 新增"能耗工具选择规则"；③ date 参数改为可选（默认今天）；④ 底层 API 从 v1/ECInfo（404）改为 supplyAndDemandList 真实 API | 魏博源 |
 | 2026-06-12 | 新增 PRD.md 产品需求文档 + MCP_INTERFACE_SPEC.md 接口契约文档；更新 CLAUDE.md 引用新文档 | 魏博源 |

@@ -148,14 +148,73 @@ Content-Type: application/json
 
 流式接口返回 `text/event-stream`，包含以下事件类型：
 
-#### `text` — LLM 生成的文本片段
+| 事件类型 | 说明 | 前端建议 |
+|----------|------|----------|
+| `thinking` | Agent 思考过程（工具调用前的推理） | 可折叠/丢弃 |
+| `tool_call` | 工具调用（name + args） | 可折叠/丢弃 |
+| `tool_result` | 工具返回结果（name + result） | 可折叠/丢弃 |
+| `rag_sources` | RAG 知识库检索来源 | 可折叠/展示为引用 |
+| `text` | 最终回答文本（流式） | **主体内容，必须展示** |
+| `intent_plan` | 多意图识别计划 | 可折叠 |
+| `action` | UI 动作（页面跳转等） | 渲染为按钮或自动执行 |
+| `error` | 错误信息 | 展示给用户 |
+| `done` | 流结束标志 | 停止加载状态 |
+
+#### `thinking` — Agent 思考过程
+
+```
+event: thinking
+data: {"text": "用户问的是机房COP，我需要调用"}
+```
+
+工具调用前 cognitive_parser 的推理文本。前端可选择折叠或丢弃。
+
+#### `tool_call` — 工具调用
+
+```
+event: tool_call
+data: {"name": "fetch_cop_data", "args": {"site_id": "FJJB000001", "chiller_id": "CH-01"}}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `name` | `string` | 工具名称 |
+| `args` | `object` | 工具参数 |
+
+#### `tool_result` — 工具返回结果
+
+```
+event: tool_result
+data: {"name": "fetch_cop_data", "result": {"cumulative_cop": 7.0, "instant_cop": 7.4, ...}}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `name` | `string` | 工具名称 |
+| `result` | `object` | 工具返回的 JSON 数据 |
+
+#### `rag_sources` — RAG 知识库检索来源
+
+```
+event: rag_sources
+data: {"query": "含湿量与相对湿度的区别", "results": ["问题：...\n回答：...", ...]}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `query` | `string` | 检索查询 |
+| `results` | `string[]` | 检索到的知识片段列表 |
+
+前端可展示为"参考来源"或引用标注。
+
+#### `text` — 最终回答文本
 
 ```
 event: text
 data: {"text": "当前冷站的"}
 ```
 
-前端应将每个 `text` 事件的内容追加到报告文本中，实现打字机效果。
+前端应将每个 `text` 事件的内容追加到报告文本中，实现打字机效果。**这是主体回答内容，必须展示。**
 
 #### `intent_plan` — 多意图识别计划
 
@@ -250,7 +309,30 @@ interface IntentItem {
 
 // ── SSE 事件 ──────────────────────────────────────────
 
-/** text 事件 */
+/** thinking 事件（思考过程） */
+interface SSEThinkingEvent {
+  text: string;
+}
+
+/** tool_call 事件（工具调用） */
+interface SSEToolCallEvent {
+  name: string;
+  args: Record<string, unknown>;
+}
+
+/** tool_result 事件（工具结果） */
+interface SSEToolResultEvent {
+  name: string;
+  result: Record<string, unknown> | string;
+}
+
+/** rag_sources 事件（RAG 来源） */
+interface SSERagSourcesEvent {
+  query: string;
+  results: string[];
+}
+
+/** text 事件（最终回答） */
 interface SSETextEvent {
   text: string;
 }
@@ -417,7 +499,24 @@ async function sendMessage() {
         const data = JSON.parse(dataMatch[1]);
 
         switch (eventType) {
+          case 'thinking':
+            // 思考过程（可选：折叠展示或丢弃）
+            // thinkingText.value += data.text;
+            break;
+          case 'tool_call':
+            // 工具调用（可选：展示调用过程）
+            // toolCalls.value.push(data);
+            break;
+          case 'tool_result':
+            // 工具结果（可选：展示原始数据）
+            // toolResults.value.push(data);
+            break;
+          case 'rag_sources':
+            // RAG 来源（可选：展示为引用）
+            // ragSources.value = data;
+            break;
           case 'text':
+            // 最终回答（必须展示）
             report.value += data.text;
             break;
           case 'intent_plan':

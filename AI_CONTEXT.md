@@ -1,8 +1,8 @@
 # EnerGraph（青山大模型）— 自演化智能能源 Agent 项目上下文
 
 ## 项目状态
-**当前阶段**: Phase 1 完成 ✅ | Phase 2 完成 ✅ | Phase 3 完成 ✅ | Phase 4 大部分完成 ✅ | Phase 7 完成 ✅ | Skills 基类完成 ✅ | API 交付 ✅ | 老架构清理完成 ✅  
-**最后更新**: 2026-06-12  
+**当前阶段**: Phase 1-4 完成 ✅ | Phase 7 完成 ✅ | **多智能体架构重构完成 ✅**  
+**最后更新**: 2026-06-15  
 **项目性质**: 企业级落地方案，南京福加智能科技有限公司内部项目  
 **GitHub**: https://github.com/Webr1ng/EnerGraph.git  
 **GitLab**: git@172.16.3.160:ai-group/energraph.git  
@@ -54,11 +54,16 @@ EnerGraph 是公司青山大模型 V3.0 **五层架构**中 **第 3 层（决策
   Skills 基类 ✅  BaseSkill 抽象基类 + 生命周期钩子
   API 交付 ✅   CORS + 鉴权 + 前端对接文档
 
-当前阶段（PowerAI 核心能力建设）：
+当前阶段（**多智能体架构重构 + PowerAI 核心能力建设**）：
   ─────────────────────────────────────────────
+  ✅ **多智能体 Subgraph 架构重构**（2026-06-15 完成）
+    - 创建 BaseAgent 抽象基类 + AGENT_REGISTRY 注册表
+    - 重构 HVAC/UI Router/PowerAI 为独立 Agent 子图
+    - Prompt 按 Agent 拆分（`prompts/*.yaml`），零冲突
+    - 编写团队协作开发指南（TEAM_COLLABORATION_GUIDE.md）
+  
   ★ 接入算法模型层的预测/优化模型（通过 MCP 协议）
     光伏出力预测 → 电负荷预测 → 冷负荷预测 → 储能调度优化
-    当前 Mock 工具（query_timedit / verify_physics）将替换为算法团队的 MCP Server
   ★ 实现综合决策 Skill：多预测结果融合 → 生成 2-3 个候选调度方案
   ★ 启用 LangGraph 持久化（PostgresSaver）+ Human-in-the-Loop
 
@@ -182,11 +187,17 @@ EnerGraph/
 │   ├── plan_fix_navigation_routes.md       # Agent 导航功能修复计划
 │   ├── frontend_backend_alignment.md       # 前后端对接文档
 │   ├── frontend_integration_guide.md      # 前端对接指南（Vue.js 示例 + TypeScript 类型 + SSE）
+│   ├── REFACTORING_SUMMARY.md             # 多智能体架构重构总结
 │   └── sync_server.md                      # 服务器同步指南
 └── src/
     ├── config/
     │   ├── settings.py        # 配置加载（LLM_PROVIDER / DEEPSEEK_MODEL 等）
-    │   └── prompts.yaml       # 【唯一入口】所有 System Prompt 集中管理 + 版本控制
+    │   └── prompts/           # 【唯一入口】System Prompt 按 Agent 拆分管理
+    │       ├── _shared.yaml        # 共享片段（回答原则/跳转规则）
+    │       ├── main_graph.yaml     # 主图节点 Prompt
+    │       ├── hvac_expert.yaml    # HVAC Agent 专属
+    │       ├── ui_router.yaml      # UI Router Agent 专属
+    │       └── powerai.yaml        # PowerAI Agent 专属
     ├── schemas/
     │   ├── v3_engine.py       # Pydantic 模型：ConstraintMatrix / TimeDiTForecast（电负荷预测） /
     │   │                      #   PhysicsResidual（设备诊断） / AIDCCoolingStatus（制冷寻优） /
@@ -214,7 +225,13 @@ EnerGraph/
     │   ├── state.py           # AgentState（TypedDict + Annotated，含 page_context/pending_actions）
     │   ├── nodes.py           # 三个节点函数（v3_engine_router 含 Skill 调度分发）
     │   ├── edges.py           # should_continue 条件路由
-    │   └── builder.py         # 图编译，graph 全局单例
+    │   ├── builder.py         # 图编译，graph 全局单例
+    │   └── agents/            # 多智能体 Subgraph 模块
+    │       ├── base_agent.py       # BaseAgent 抽象基类
+    │       ├── __init__.py         # AGENT_REGISTRY 注册表
+    │       ├── hvac_expert/        # HVAC 专家 Agent 子图
+    │       ├── ui_router/          # UI Router Agent 子图
+    │       └── powerai/            # PowerAI 储能调度 Agent 子图（骨架）
     ├── pipelines/
     │   ├── rag_ingest.py      # HVAC 语料入库（5605 条，bge-small-zh-v1.5）
     │   └── sft_export.py      # SFT 数据清洗导出占位
@@ -303,13 +320,11 @@ EnerGraph/
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
-| 2026-06-12 | 新增 PRD.md（产品需求文档）+ MCP_INTERFACE_SPEC.md（9 个算法模型 MCP 接口契约） | 魏博源 |
-| 2026-06-12 | Prompt 精简优化：提取共享片段消除重复、删除工具使用禁区、精简导航规则、清理已删字段 context、补充 energy_dispatch_intent | 魏博源 |
-| 2026-06-12 | 老架构概念清理：删除 TimeDiT/PhysicsAI/AIDC 相关的 Mock 工具和 Schema，修正 Prompt 架构层级（第0层→第3层），清理文件头注释，删除占位文件，修复 app.py IndentationError | 魏博源 |
-| 2026-06-12 | API 交付前端对接：CORS + Bearer Token 鉴权 + run.py 启动脚本 + ApiConfig + 前端对接文档（Vue.js + TypeScript） | 魏博源 |
-| 2026-06-12 | Token 自动刷新：fuca_token_refresher.py（RSA 加密登录 + mb/token 获取）+ java_backend.py 401 自动重试 + .env 自动更新 | 魏博源 |
-| 2026-06-12 | 新增 fetch_efficiency_detail 通用能效查询（8 种参数），修复 fetch_cop_data 改用正确 API | 魏博源 |
-| 2026-06-12 | Phase 4.2 代码审查重构：提取 API 公共函数、新增 fetch_photovoltaic_monthly、精简 nav_hint prompt | 魏博源 |
+| 2026-06-15 | 重构后代码同步审阅：移除 nodes.py 冗余注入、删除旧 prompts.yaml、修复 v3_interpreter 注释、24 文件头 V3→算法层、测试 docstring 更新 | 魏博源 |
+| 2026-06-15 | 清理硬编码 prompts.yaml 引用：nodes.py/parse_intent.py/base_skill.py 改为 settings.prompts；4 个 Skills 文件头更新 | 魏博源 |
+| 2026-06-15 | 多智能体 Subgraph 架构重构：BaseAgent + AGENT_REGISTRY + 3 Agent 子图 + Prompt 拆分 5 文件 + TEAM_COLLABORATION_GUIDE.md | 魏博源 |
+| 2026-06-15 | SSE 协议升级（细粒度事件类型）+ 前端思考过程折叠 | 魏博源 |
+| 2026-06-12 | 新增 PRD.md + MCP_INTERFACE_SPEC.md + Prompt 精简优化 + 老架构清理 + API 交付 + Token 自动刷新 | 魏博源 |
 
 > 更早历史见 `CHANGELOG.md` 或 `git log`。
 

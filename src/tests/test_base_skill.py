@@ -2,7 +2,7 @@
 
 所属层：tests
 依赖：pytest, unittest.mock
-对接 V3 引擎：N/A
+对接算法层：N/A
 
 测试范围：
   - BaseSkill 不可直接实例化（abstract）

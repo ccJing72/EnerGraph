@@ -2,7 +2,7 @@
 
 所属层：skills（Tools 之上的业务推理层）
 依赖：src.skills.*
-对接 V3 引擎：N/A（由各 Skill 内部编排 Tools）
+对接算法层：N/A（由各 Skill 内部编排 Tools）
 
 Skills 与 Tools 的分工：
   Tools = 原子执行层（确定性函数，强类型 I/O，不含 Prompt）
@@ -33,7 +33,7 @@ SKILL_DESCRIPTIONS = {
     "hvac_expert": "暖通空调专家问答（规范查询、能效计算、故障诊断、节能优化）",
     "energy_dispatch": "能源调度分析（负荷预测、光伏协同、物理验证、排产计划）",
     "ui_router": "监控页面查询与跳转（实时 COP、能耗、报警，下发页面跳转信号）",
-    "v3_interpreter": "V3 引擎数据解读（将物理残差/SOC 曲线转化为 Markdown 报告）",
+    "v3_interpreter": "数据解读与报告生成（将工具返回数据转化为 Markdown 报告）",
 }
 
 

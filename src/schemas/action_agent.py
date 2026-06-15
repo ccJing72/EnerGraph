@@ -2,7 +2,7 @@
 
 所属层：schemas
 依赖：pydantic
-对接 V3 引擎：N/A
+对接算法层：N/A
 """
 from typing import Optional
 from pydantic import BaseModel, Field

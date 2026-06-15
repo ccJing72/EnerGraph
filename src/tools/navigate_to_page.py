@@ -2,7 +2,7 @@
 
 所属层：tools
 依赖：src.schemas.action_agent
-对接 V3 引擎：N/A（纯状态变更，下发 UIAction 跳转信号）
+对接算法层：N/A（纯状态变更，下发 UIAction 跳转信号）
 
 此工具不调用外部 API，仅将 LLM 决定的路由和参数
 封装为 UIAction 对象，由 v3_engine_router 写入 AgentState.pending_actions。

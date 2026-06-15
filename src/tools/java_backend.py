@@ -2,7 +2,7 @@
 
 所属层：tools
 依赖：src.schemas.action_agent, src.utils.fuca_token_refresher, httpx, os, yaml
-对接 V3 引擎：N/A（对接福加 API 真实监控数据）
+对接算法层：N/A（对接福加 API 真实监控数据）
 
 Phase 4.2: 所有工具接入真实 API，未配置 FUCA_API_BASE_URL 时走 Mock fallback。
 Phase 4.3: Token 自动刷新 — 401 时自动调用 fuca_token_refresher 重新登录获取 Token。
@@ -297,7 +297,9 @@ def fetch_cop_data(site_id: str, chiller_id: str = "CH-01") -> Dict[str, Any]:
 def fetch_energy_summary(site_id: str, date: str = "") -> Dict[str, Any]:
     """获取站点单日能耗汇总数据。
 
-    组合真实 API: supplyAndDemandList（按小时供需数据：电网/光伏/储能充放电/负荷/卖电）
+    组合两个真实 API:
+    - v1/ECInfo: 设备级用电量统计（与能耗分析页面一致）
+    - realTimePowerList: 15分钟级光伏功率（与 fetch_photovoltaic_daily 一致）
 
     Args:
         site_id: 站点 ID（如 FJJB000001）
@@ -311,57 +313,52 @@ def fetch_energy_summary(site_id: str, date: str = "") -> Dict[str, Any]:
             date = datetime.now().strftime("%Y-%m-%d")
 
         if not _is_mock():
-            # 1. 获取日度供需数据（按小时）
-            supply_data = _api_get(
-                "/integrateMonitor/photovoltaicStorage/supplyAndDemandList",
+            site_config = _get_site_config(site_id)
+
+            # 1. 使用 ECInfo API 获取设备级用电量（与能耗分析页面一致）
+            ec_payload = {
+                "nodeId": site_id,
+                "nodeName": site_config["name"],
+                "deviceType": site_config["device_type"],
+                "classificationCode": site_config["classification_code"],
+                "classificationName": site_config["classification_name"],
+                "deviceName": site_config["device_name"],
+                "dimension": "day",
+                "startTime": f"{date} 00:00:00",
+                "endTime": f"{date} 23:59:59",
+                "deviceCodes": site_config["device_codes"],
+                "deviceLevel": site_config["device_level"],
+            }
+            ec_data = _api_post("/analysisWeb/energyAnalysis/v1/ECInfo", ec_payload)
+
+            total_consumption = float(ec_data.get("totalEnergy", 0))
+            peak_load = float(ec_data.get("maxEnergy", 0))
+            avg_load = float(ec_data.get("avgEnergy", 0))
+            carbon_coeff = float(ec_data.get("carbonCoefficient", 0.7703))
+
+            # 2. 光伏使用 realTimePowerList（15分钟级，与 fetch_photovoltaic_daily 一致）
+            rt_data = _api_get(
+                "/integrateMonitor/photovoltaicStorage/realTimePowerList",
                 {"date": date}
             )
+            total_pv = 0.0
+            for point in rt_data:
+                for item in point.get("powerInfoList", []):
+                    if item.get("code") == "photovoltaic":
+                        # 光伏 value 为负值（发电输出），取绝对值；功率 × 0.25h = 能量
+                        total_pv += abs(float(item.get("value", 0))) * 0.25
 
-            # 2. 汇总各分项（每小时数据，value 单位 kW，×1h = kWh）
-            total_grid = 0.0      # 电网取电
-            total_pv = 0.0        # 光伏发电
-            total_charge = 0.0    # 储能充电
-            total_discharge = 0.0 # 储能放电
-            total_load = 0.0      # 用电负荷
-            total_sell = 0.0      # 上网卖电
-            peak_load = 0.0       # 峰值负荷
-            loads = []
-
-            for hour in supply_data:
-                for item in hour.get("supplyList", []):
-                    code = item.get("code", "")
-                    val = float(item.get("value", 0))
-                    if code == "powerGrid":
-                        total_grid += val
-                    elif code == "photovoltaic":
-                        total_pv += val
-                    elif code == "energyStorageDischarge":
-                        total_discharge += val
-
-                for item in hour.get("demandList", []):
-                    code = item.get("code", "")
-                    val = float(item.get("value", 0))
-                    if code == "energyStorageCharge":
-                        total_charge += val
-                    elif code == "electricalLoad":
-                        total_load += val
-                        loads.append(val)
-                        peak_load = max(peak_load, val)
-                    elif code == "powerGridSale":
-                        total_sell += val
-
-            avg_load = sum(loads) / len(loads) if loads else 0.0
             # 碳减排 = 光伏发电量 × 0.57 kgCO₂e/kWh（国标排放因子）
             carbon_reduction = total_pv * 0.57
 
             return EnergySummary(
                 site_id=site_id,
                 date=date,
-                total_consumption_kwh=total_load,
-                pv_generation_kwh=total_pv,
-                grid_import_kwh=total_grid,
-                storage_charge_kwh=total_charge,
-                storage_discharge_kwh=total_discharge,
+                total_consumption_kwh=total_consumption,
+                pv_generation_kwh=round(total_pv, 1),
+                grid_import_kwh=total_consumption,  # ECInfo 不区分电网/光伏，totalEnergy 即设备总用电
+                storage_charge_kwh=0.0,  # ECInfo 不含储能分项
+                storage_discharge_kwh=0.0,
                 peak_load_kw=peak_load,
                 avg_load_kw=round(avg_load, 2),
                 carbon_reduction_kg=round(carbon_reduction, 2),
@@ -589,6 +586,8 @@ def fetch_photovoltaic_daily(site_id: str, date: str = "") -> Dict[str, Any]:
 def fetch_energy_usage(site_id: str) -> Dict[str, Any]:
     """获取全厂用电量：今日用电、本月用电、环比数据。
 
+    使用 ECInfo API（与能耗分析页面一致），而非 cockpit/energyUsage（首页数据）。
+
     Args:
         site_id: 站点 ID
 
@@ -597,12 +596,51 @@ def fetch_energy_usage(site_id: str) -> Dict[str, Any]:
     """
     try:
         if not _is_mock():
-            api_data = _api_get("/analysisWeb/energyAnalysis/cockpit/energyUsage")
+            site_config = _get_site_config(site_id)
+            today = datetime.now().strftime("%Y-%m-%d")
+            month = datetime.now().strftime("%Y-%m")
+
+            # 今日用电（ECInfo）
+            today_payload = {
+                "nodeId": site_id,
+                "nodeName": site_config["name"],
+                "deviceType": site_config["device_type"],
+                "classificationCode": site_config["classification_code"],
+                "classificationName": site_config["classification_name"],
+                "deviceName": site_config["device_name"],
+                "dimension": "day",
+                "startTime": f"{today} 00:00:00",
+                "endTime": f"{today} 23:59:59",
+                "deviceCodes": site_config["device_codes"],
+                "deviceLevel": site_config["device_level"],
+            }
+            today_data = _api_post("/analysisWeb/energyAnalysis/v1/ECInfo", today_payload)
+            today_kwh = float(today_data.get("totalEnergy", 0))
+            today_mom = float(today_data.get("totalEnergyMOMRatio", 0))
+
+            # 本月用电（ECInfo，dimension=month）
+            month_payload = {
+                "nodeId": site_id,
+                "nodeName": site_config["name"],
+                "deviceType": site_config["device_type"],
+                "classificationCode": site_config["classification_code"],
+                "classificationName": site_config["classification_name"],
+                "deviceName": site_config["device_name"],
+                "dimension": "month",
+                "startTime": f"{month}-01 00:00:00",
+                "endTime": f"{month}-31 23:59:59",
+                "deviceCodes": site_config["device_codes"],
+                "deviceLevel": site_config["device_level"],
+            }
+            month_data = _api_post("/analysisWeb/energyAnalysis/v1/ECInfo", month_payload)
+            month_kwh = float(month_data.get("totalEnergy", 0))
+            month_mom = float(month_data.get("totalEnergyMOMRatio", 0))
+
             return EnergyUsage(
-                today_kwh=float(api_data.get("todayE", 0)),
-                month_kwh=float(api_data.get("monthE", 0)),
-                today_mom_pct=float(api_data.get("todayMoM", 0)),
-                month_mom_pct=float(api_data.get("monthMoM", 0)),
+                today_kwh=today_kwh,
+                month_kwh=month_kwh,
+                today_mom_pct=today_mom,
+                month_mom_pct=month_mom,
             ).model_dump()
 
         # Mock fallback

@@ -93,26 +93,28 @@ with st.sidebar:
         st.session_state.chat_history = []
         st.rerun()
 
-# 显示历史对话（步骤/意图/来源在上，回答在下）
+# 显示历史对话（步骤/意图/来源折叠，回答在下）
 for msg in st.session_state.chat_history:
     with st.chat_message(msg["role"]):
         if msg["role"] == "assistant":
-            # 1. 步骤进度（rerun 后恢复）
-            if msg.get("steps"):
-                st.markdown("\n".join(msg["steps"]))
-            # 2. 多意图计划（Phase 7）
-            if msg.get("intent_display"):
-                st.markdown("**🧩 识别到多个意图：**")
-                for item in msg["intent_display"]:
-                    st.markdown(f"- {item}")
-                st.divider()
-            # 3. 工具详情 / RAG 来源（可折叠，在回答上方）
+            # 1. 思考过程 + 意图识别（折叠）
+            has_steps = bool(msg.get("steps"))
+            has_intent = bool(msg.get("intent_display"))
+            if has_steps or has_intent:
+                with st.expander("💭 思考过程 & 意图识别", expanded=False):
+                    if has_steps:
+                        st.markdown("\n".join(msg["steps"]))
+                    if has_intent:
+                        st.markdown("**🧩 识别到多个意图：**")
+                        for item in msg["intent_display"]:
+                            st.markdown(f"- {item}")
+            # 2. 工具详情 / RAG 来源（折叠）
             if msg.get("details"):
                 with st.expander("📋 工具调用详情 & 知识库来源", expanded=False):
                     for label, data in msg["details"].items():
                         st.subheader(label)
                         st.json(data)
-        # 4. 回答内容（含底部跳转链接）
+        # 3. 回答内容（含底部跳转链接）
         st.markdown(msg["content"])
 
 # 处理侧边栏示例按钮触发
@@ -209,12 +211,12 @@ if user_input:
                             if k not in ("messages",):
                                 result[k] = v
 
-            # ========== 流式结束后的布局：细节在上，回答在下 ==========
+            # ========== 流式结束后的布局：折叠过程信息，突出回答 ==========
 
-            # 1. 多意图计划展示（Phase 7）
+            # 1. 解析多意图计划（Phase 7）
             intent_plan = result.get("intent_plan")
+            intent_items = []
             if intent_plan:
-                intent_items = []
                 for i in intent_plan:
                     if isinstance(i, dict):
                         desc = i.get("description", "")
@@ -224,16 +226,24 @@ if user_input:
                         desc, cat, status = i.description, i.category, i.status
                     emoji = {"monitor": "📡", "hvac": "❄️", "energy": "⚡", "alarm": "🚨", "export": "📊"}.get(cat, "📌")
                     intent_items.append(f"{emoji} 意图 {i.id if not isinstance(i, dict) else i.get('id', '?')}: {desc}")
-                with st.container():
-                    st.markdown("**🧩 识别到多个意图：**")
-                    for item in intent_items:
-                        st.markdown(f"- {item}")
-                    st.divider()
 
-            # 2. 页面跳转建议（Phase 2）
+            # 2. 将步骤 + 意图识别折叠（替换流式时的实时显示）
+            if steps or intent_items:
+                with steps_ph.container():
+                    with st.expander("💭 思考过程 & 意图识别", expanded=False):
+                        if steps:
+                            st.markdown("\n".join(steps))
+                        if intent_items:
+                            st.markdown("**🧩 识别到多个意图：**")
+                            for item in intent_items:
+                                st.markdown(f"- {item}")
+            else:
+                steps_ph.empty()
+
+            # 3. 页面跳转建议（Phase 2，保持可见）
             pending_actions = result.get("pending_actions", [])
             if pending_actions:
-                with st.container():
+                with details_ph.container():
                     st.markdown("**🔗 Agent 建议跳转：**")
                     for action in pending_actions:
                         if isinstance(action, dict):
@@ -248,9 +258,8 @@ if user_input:
                         param_str = ", ".join([f"{k}={v}" for k, v in params.items()])
                         st.info(f"🎯 **{route_name}** ({route})\n\n参数: {param_str}")
                     st.markdown("💡 *在福加网页中，Agent 会自动执行跳转*")
-                    st.divider()
 
-            # 3. 工具调用详情 / RAG 来源（在回答上方）
+            # 4. 工具调用详情 / RAG 来源（折叠）
             details = {}
             if result.get("hvac_knowledge"):
                 details["📚 HVAC 知识库检索"] = result["hvac_knowledge"]
@@ -258,12 +267,20 @@ if user_input:
                 details["🎯 意图解析（ConstraintMatrix）"] = result["constraints"]
 
             if details:
-                with details_ph.container():
+                if not pending_actions:
+                    # 没有跳转建议时，details_ph 用于工具详情
+                    with details_ph.container():
+                        with st.expander("📋 工具调用详情 & 知识库来源", expanded=False):
+                            for label, data in details.items():
+                                st.subheader(label)
+                                st.json(data)
+                else:
+                    # 有跳转建议时，在跳转建议下方显示
                     with st.expander("📋 工具调用详情 & 知识库来源", expanded=False):
                         for label, data in details.items():
                             st.subheader(label)
                             st.json(data)
-            else:
+            elif not pending_actions:
                 details_ph.empty()
 
             # 3. 最终回答

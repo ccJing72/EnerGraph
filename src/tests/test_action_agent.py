@@ -2,7 +2,7 @@
 
 所属层：tests
 依赖：fastapi, httpx, pytest, unittest.mock
-对接 V3 引擎：N/A（Mock graph.astream_events）
+对接算法层：N/A（Mock graph.astream_events）
 """
 import json
 from unittest.mock import AsyncMock, patch
@@ -20,12 +20,35 @@ def _make_action_event():
 
 
 async def _mock_astream_events(initial_state, version="v2"):
-    """模拟 graph.astream_events，依次产出 text、action、done 事件所需的 LangGraph 事件。"""
-    from langchain_core.messages import AIMessageChunk
+    """模拟 graph.astream_events，依次产出 thinking、tool_call、tool_result、text、action、done 事件。"""
+    from langchain_core.messages import AIMessageChunk, ToolMessage
 
-    # text 事件
+    # thinking 事件（cognitive_parser 工具调用前的思考）
     yield {
         "event": "on_chat_model_stream",
+        "metadata": {"langgraph_node": "cognitive_parser"},
+        "data": {"chunk": AIMessageChunk(content="让我查询一下")},
+    }
+    # tool_call 事件（cognitive_parser 决定调用工具）
+    from unittest.mock import MagicMock
+    mock_output = MagicMock()
+    mock_output.tool_calls = [{"name": "fetch_cop_data", "args": {"site_id": "SH-01"}, "id": "call_01"}]
+    yield {
+        "event": "on_chat_model_end",
+        "metadata": {"langgraph_node": "cognitive_parser"},
+        "data": {"output": mock_output},
+    }
+    # tool_result 事件（v3_engine_router 返回工具结果）
+    tool_msg = ToolMessage(content='{"cumulative_cop": 4.2}', tool_call_id="call_01")
+    yield {
+        "event": "on_chain_stream",
+        "metadata": {"langgraph_node": "v3_engine_router"},
+        "data": {"chunk": {"messages": [tool_msg]}},
+    }
+    # text 事件（cognitive_parser 工具调用后的最终回答）
+    yield {
+        "event": "on_chat_model_stream",
+        "metadata": {"langgraph_node": "cognitive_parser"},
         "data": {"chunk": AIMessageChunk(content="冷水机房当前 COP 为 4.2")},
     }
     # action 事件（通过 on_chain_end 携带 pending_actions）
@@ -59,9 +82,22 @@ async def test_stream_contains_action_event():
         if line.startswith("event:")
     ]
 
+    assert "thinking" in event_types, f"缺少 thinking 事件，实际事件：{event_types}"
+    assert "tool_call" in event_types, f"缺少 tool_call 事件，实际事件：{event_types}"
+    assert "tool_result" in event_types, f"缺少 tool_result 事件，实际事件：{event_types}"
     assert "text" in event_types, f"缺少 text 事件，实际事件：{event_types}"
     assert "action" in event_types, f"缺少 action 事件，实际事件：{event_types}"
     assert "done" in event_types, f"缺少 done 事件，实际事件：{event_types}"
+
+    # 验证 tool_call payload
+    tool_call_lines = [
+        line.removeprefix("data: ").strip()
+        for i, line in enumerate(body.splitlines())
+        if i > 0 and body.splitlines()[i - 1].strip() == "event: tool_call"
+    ]
+    assert tool_call_lines, "tool_call 事件缺少 data 行"
+    tc_payload = json.loads(tool_call_lines[0])
+    assert tc_payload.get("name") == "fetch_cop_data"
 
     # 验证 action payload 包含正确路由
     action_lines = [

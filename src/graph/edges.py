@@ -1,8 +1,8 @@
-"""edges — V3 Agent 条件路由
+"""edges — 决策层 Agent 条件路由
 
 所属层：graph
 依赖：langchain_core, src.config.settings
-对接 V3 引擎：N/A
+对接算法层：N/A
 """
 from langchain_core.messages import AIMessage
 

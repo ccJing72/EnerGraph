@@ -1,8 +1,8 @@
 """base_skill — Skill 抽象基类，统一接口契约与生命周期管理
 
 所属层：skills
-依赖：abc, pathlib, pyyaml, src.graph.state
-对接 V3 引擎：N/A
+依赖：abc, src.graph.state, src.config.settings
+对接算法层：N/A
 
 设计参考（2026 行业实践）：
   - Pydantic AI Capabilities：将 tools + instructions + hooks 封装为可复用模块
@@ -11,23 +11,20 @@
 """
 import logging
 from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-import yaml
+from src.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
-_PROMPTS_PATH = Path(__file__).resolve().parents[2] / "src" / "config" / "prompts.yaml"
 _prompts_cache: Dict[str, Any] = {}
 
 
 def load_prompts() -> Dict[str, Any]:
-    """从 prompts.yaml 加载 Prompt 字典（模块级缓存）。"""
+    """从 settings.prompts 加载 Prompt 字典（支持多文件，模块级缓存）"""
     global _prompts_cache
-    if not _prompts_cache and _PROMPTS_PATH.exists():
-        with open(_PROMPTS_PATH, "r", encoding="utf-8") as f:
-            _prompts_cache = yaml.safe_load(f) or {}
+    if not _prompts_cache:
+        _prompts_cache = settings.prompts or {}
     return _prompts_cache
 
 

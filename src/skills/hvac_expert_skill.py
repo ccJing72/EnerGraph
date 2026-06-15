@@ -2,14 +2,14 @@
 
 所属层：skills
 依赖：src.tools.query_hvac_knowledge, src.config.settings
-对接 V3 引擎：N/A（ChromaDB RAG）
+对接算法层：N/A（ChromaDB RAG）
 
 SOP：
   1. 调用 query_hvac_knowledge 检索相关 Q&A
   2. 若 low_confidence=True → 触发拒答（hvac_refusal Prompt）
   3. 否则综合检索结果生成回答，末尾附引用来源（hvac_citation_format Prompt）
 
-Prompt keys（src/config/prompts.yaml）：
+Prompt keys（src/config/prompts/hvac_expert.yaml）：
   - hvac_expert          : 领域专家角色设定
   - hvac_refusal         : 低置信度拒答指令
   - hvac_citation_format : 引用来源格式要求

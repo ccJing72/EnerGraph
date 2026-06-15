@@ -2,7 +2,7 @@
 
 所属层：utils
 依赖：httpx, pycryptodome (Crypto.PublicKey.RSA, Crypto.Cipher.PKCS1_v1_5)
-对接 V3 引擎：N/A（对接福加 EMP Admin 认证 API）
+对接算法层：N/A（对接福加 EMP Admin 认证 API）
 
 认证流程（逆向自 aiot-fuca.com 前端）：
   1. RSA 加密密码（512-bit PKCS1v15，公钥嵌入前端 encrypt.76f0cfe5.js）

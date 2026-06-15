@@ -146,7 +146,21 @@ git push origin main
 
 ## 扩展原则
 
-### 新增 Skill（业务技能）
+### 新增 Agent（多智能体子图，推荐）
+**当前架构已升级为多智能体 Subgraph 模式**，新增智能体（如碳管理、微电网等）推荐使用 Agent 而非 Skill：
+
+1. **创建 Agent 目录**：`src/graph/agents/<agent_name>/`（如 `carbon_mgmt/`）
+2. **定义专属 State**：`agents/<agent_name>/state.py`（继承 `BaseAgentState`）
+3. **实现子图**：`agents/<agent_name>/agent.py`（继承 `BaseAgent`，实现 `build_graph()`）
+4. **创建专属 Prompt**：`src/config/prompts/<agent_name>.yaml`
+5. **注册到全局**：在 `agents/__init__.py` 的 `_register_all_agents()` 中注册
+6. **编写测试**：`agents/<agent_name>/tests/`
+7. **更新文档**：`AI_CONTEXT.md` §2 + §3，`CHANGELOG.md`
+
+**详细指南见**：`TEAM_COLLABORATION_GUIDE.md` § 二
+
+### 新增 Skill（业务技能，兼容旧架构）
+Skills 仍可用于快速原型开发，但长期建议迁移为 Agent 子图：
 1. `src/skills/` 下新建文件，文件头注明 SOP 流程、调用的 Tools、Prompt keys
 2. 在 `src/skills/__init__.py` 的 `SKILL_REGISTRY` + `SKILL_DESCRIPTIONS` 注册
 3. Skill 内部只编排 Tools，不直接调用 LLM（LLM 调用在 Graph 节点层）
@@ -167,22 +181,27 @@ git push origin main
 
 ### Prompt 管理规范（强制集中管理 + 版本控制）
 
-**原则**: 所有大模型 Prompt 统一收拢至 `src/config/prompts.yaml` 集中管理，任何节点代码不得硬编码 Prompt 字符串。
+**原则**: 所有大模型 Prompt 统一收拢至 `src/config/prompts/` 目录集中管理，任何节点代码不得硬编码 Prompt 字符串。
 
 **存放规则**:
-- **唯一入口**: `src/config/prompts.yaml` 是 System Prompt / 模板的**唯一存放位置**。禁止将 Prompt 分散到 Python 代码、`.env`、Markdown 或其他 YAML 文件中
+- **目录结构**：Prompt 按 Agent 拆分为多个 YAML 文件（`prompts/<agent>.yaml`），避免单文件冲突
+  - `prompts/_shared.yaml` — 共享片段（回答原则/跳转规则）
+  - `prompts/main_graph.yaml` — 主图节点 Prompt
+  - `prompts/hvac_expert.yaml` — HVAC Agent 专属
+  - `prompts/ui_router.yaml` — UI Router Agent 专属
+  - `prompts/powerai.yaml` — PowerAI Agent 专属
 - **加载方式**: 通过 `src/config/settings.py` → `settings.prompts` 统一加载，Graph 节点只引用 key，不自行读文件
-- **命名规范**: Prompt key 使用 `snake_case`，按节点/场景命名（如 `cognitive_parser`, `interpreter_generator`, `hvac_expert`, `action_agent_nav_hint`）
-- **动态数据注入**: 动态配置数据（路由表、工具列表、站点参数等）应独立成 YAML 配置文件（如 `config/routes.yaml`、`config/site_mapping.yaml`），在运行时通过 `settings` 加载并动态注入到 system prompt 中，不直接写入 `prompts.yaml`。**原则：静态推理规则放 prompts.yaml，动态配置数据放独立 config 文件**
+- **命名规范**: Prompt key 使用 `snake_case`，按节点/场景命名（如 `cognitive_parser`, `hvac_expert`, `energy_dispatch_intent`）
+- **动态数据注入**: 动态配置数据（路由表、工具列表、站点参数等）应独立成 YAML 配置文件（如 `config/routes.yaml`、`config/site_mapping.yaml`），在运行时通过 `settings` 加载并动态注入到 system prompt 中，不直接写入 Prompt 文件。**原则：静态推理规则放 prompts/，动态配置数据放 config/**
 
 **版本控制要求**:
-- 每次修改 `prompts.yaml` 必须以 `[config]` 标签单独 commit，commit message 写明修改的 prompt key 和改动目的
+- 每次修改 `prompts/*.yaml` 必须以 `[config]` 标签单独 commit，commit message 写明修改的 prompt key 和改动目的
 - 禁止将 Prompt 调优和代码改动混在同一个 commit 中——Prompt 迭代与代码变更独立溯源
-- 多人协作时，prompts.yaml 的修改冲突需人工确认，禁止自动合并
+- 多人协作时，修改不同 Agent 的 Prompt 文件（如 `powerai.yaml` vs `carbon.yaml`）**零冲突**；修改共享文件（`_shared.yaml`）需人工确认
 
 **代码审查红线**:
 - PR diff 中出现任何硬编码的 Prompt 字符串（含 `system=`、`SystemMessage(content=` 等），审查人必须拒绝合并
-- 例外：单元测试中 mock LLM 调用时可使用占位字符串，但需加注释 `# mock prompt, 不从 prompts.yaml 加载`
+- 例外：单元测试中 mock LLM 调用时可使用占位字符串，但需加注释 `# mock prompt, 不从 prompts/ 加载`
 
 ### RAG 扩展
 - 入库：`src/pipelines/rag_ingest.py`

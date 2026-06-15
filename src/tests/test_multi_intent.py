@@ -2,7 +2,7 @@
 
 所属层：tests
 依赖：pytest, unittest.mock
-对接 V3 引擎：N/A（Mock LLM / Graph）
+对接算法层：N/A（Mock LLM / Graph）
 
 测试范围：
   - T1: IntentItem 模型序列化 + AgentState intent_plan 字段
@@ -117,7 +117,7 @@ class TestCognitiveParserMultiIntent:
     """cognitive_parser Prompt 和 intent_plan 构建测试"""
 
     def test_prompt_contains_multi_intent_instructions(self):
-        """prompts.yaml 中 cognitive_parser 应包含多意图识别指令"""
+        """prompts/main_graph.yaml 中 cognitive_parser 应包含多意图识别指令"""
         from src.graph.nodes import _load_prompts
 
         prompts = _load_prompts()
@@ -127,13 +127,14 @@ class TestCognitiveParserMultiIntent:
         assert "数据依赖" in content
 
     def test_prompt_contains_parallel_example(self):
-        """Prompt 应包含并行执行示例"""
+        """Prompt 应包含并行执行和多意图识别指令（新架构：Agent 路由）"""
         from src.graph.nodes import _load_prompts
 
         prompts = _load_prompts()
         content = prompts["cognitive_parser"]["system"]
-        assert "fetch_cop_data" in content
-        assert "fetch_energy_summary" in content
+        # 新架构：检查 Agent 路由指令而非具体工具示例
+        assert "hvac_expert Agent" in content or "ui_router Agent" in content or "powerai Agent" in content
+        assert "并行执行" in content or "多个工具并行" in content
 
     def test_multi_tool_calls_build_intent_plan(self):
         """LLM 返回多个 tool_calls 时，cognitive_parser_node 构建 intent_plan"""
@@ -211,7 +212,7 @@ class TestInterpreterSegmentedReport:
     """interpreter_generator 分段报告测试"""
 
     def test_prompt_contains_segment_instructions(self):
-        """prompts.yaml 中 interpreter_generator 应包含分段报告指令"""
+        """prompts/main_graph.yaml 中 interpreter_generator 应包含分段报告指令"""
         from src.graph.nodes import _load_prompts
 
         prompts = _load_prompts()
