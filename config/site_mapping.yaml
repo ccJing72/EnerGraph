@@ -17,6 +17,11 @@ sites:
     cop_point_names:                       # COP 查询（getValueByPointGroupNames API）
       - "水系统累计COP"                     # 机房COP（用户看到的"机房平均COP"=7）
       - "水系统瞬时COP"                     # 机房瞬时COP
+
+    # ── 冷水机组设备 ID（getDeviceRunningInfo API，用于获取温度/功率数据） ──
+    chiller_device_ids:
+      "CH-01": 3603                        # 冷水机组#1（磁悬浮）
+      "CH-02": 3604                        # 冷水机组#2
     # 能效查询参数目录（queryPointEnergyEfficiency API）
     # 后续可从 queryEnergyParams 接口动态获取
     efficiency_points:

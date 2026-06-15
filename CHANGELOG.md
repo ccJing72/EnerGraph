@@ -4,10 +4,13 @@
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-15 | fetch_cop_data 接入机组运行参数（温度/功率）：新增 getDeviceRunningInfo API 调用，返回蒸发器出水温度、冷凝器进水温度、机组实时功率。site_mapping.yaml 新增 chiller_device_ids（CH-01=3603, CH-02=3604） | 魏博源 |
+| 2026-06-12 | 修复能耗汇总数据为 0（二次修复）：LLM 误调 fetch_energy_usage（仅总电量）而非 fetch_energy_summary（含光储分项）。修复：① TOOL_SCHEMAS 描述明确区分（fetch_energy_usage 标注"不含光伏/储能分项"，fetch_energy_summary 标注"优先使用"）；② cognitive_parser prompt 新增"能耗工具选择规则"；③ date 参数改为可选（默认今天）；④ 底层 API 从 v1/ECInfo（404）改为 supplyAndDemandList 真实 API | 魏博源 |
+| 2026-06-12 | Prompt 精简优化：提取共享片段（回答原则/页面跳转说明）到 _shared 段由 Python 注入，消除 cognitive_parser 与 interpreter_generator 重复内容；删除"工具使用禁区"段（已删工具的多余警告）；action_agent_nav_hint 16 条硬编码跳转规则替换为引用路由表的纯推理指令；从 TOOL_SCHEMAS 移除 parse_business_intent；清理 nodes.py 中已删字段 context JSON；补充 energy_dispatch_intent prompt key；清理 energy_dispatch_skill.py 老架构引用；fetch_cop_data 新增机组运行参数（温度/功率）；site_mapping 新增 chiller_device_ids | 魏博源 |
 | 2026-06-12 | 老架构概念清理 + 热修复：删除 3 个 Mock 工具（query_timedit/verify_physics/fetch_aidc_cooling）及其在 TOOL_REGISTRY/TOOL_SCHEMAS 的注册；删除过时 Schema（TimeDiTForecast/AIDCCoolingStatus）；修正 Prompt 架构层级错误（第0层→第3层决策层）；清理所有文件头注释的老架构引用（对接V3引擎→对接算法层）；删除占位文件（checkpointer.py/sft_export.py）；更新 README 和前端文件的架构定位；修复 app.py 老架构 if 块残留导致的 IndentationError | 魏博源 |
 | 2026-06-12 | API 交付前端对接：新增 CORS 中间件 + 可选 Bearer Token 鉴权 + 启动脚本 run.py + API 配置段（ApiConfig）+ 前端对接文档（Vue.js 代码示例 + TypeScript 类型定义 + SSE 流式对接指南）。api.py 版本升至 0.3.0 | 魏博源 |
 | 2026-06-12 | Token 自动刷新机制（Phase 4.3）：新建 src/utils/fuca_token_refresher.py（逆向福加前端 RSA 加密 + 登录 + mb/token 获取 + .env 自动更新）；改造 java_backend.py（动态 Token 管理 + 401/code=401 自动刷新重试 + 线程安全锁）；.env 新增 FUCA_LOGIN_NAME/FUCA_PASSWORD；requirements.txt 新增 pycryptodome | 魏博源 |
-| 2026-06-12 | 新增 fetch_photovoltaic_daily 日度光伏发电量工具（累加 15min 功率数据计算日发电量）。修复 fetch_cop_data 字段映射（水系统累计COP=7.0）。新增 fetch_efficiency_detail 通用能效查询（8 种参数） | 魏博源 |
+| 2026-06-12 | 修复 LLM 误调 parse_business_intent：cognitive_parser prompt 新增"工具使用禁区"，明确禁止日常查询调用 parse_business_intent 和 Mock 算法工具。新增 fetch_photovoltaic_daily 日度光伏发电量工具 | 魏博源 |
 | 2026-06-12 | Phase 4.2 代码审查 + 重构：提取 _api_get/_api_post 公共函数消除样板；新增 fetch_photovoltaic_monthly 工具；action_agent_nav_hint prompt 精简并补充全部新工具导航规则。54 tests 全通过 | 魏博源 |
 | 2026-06-12 | Phase 4.2 Task 3+4 完成：代码实现（8 个工具接入真实 API）。fetch_cop_data/fetch_active_alarms 从 Mock 改为真实 API；新增 fetch_carbon_info/fetch_photovoltaic_monthly/fetch_energy_usage/fetch_device_rank/fetch_environment_params/fetch_efficiency_calendar。schemas 新增 6 个 Pydantic 模型 | 魏博源 |
 | 2026-06-12 | Phase 4.2 Task 2 完成：Chrome MCP 全量抓取（Batch 1+2+3）。5 个页面共抓取 17 个接口（含 4 个 Bonus）。抓取数据保存至 docs/api_capture_batch1.md + docs/api_capture_batch2.md | 魏博源 |

@@ -37,20 +37,12 @@ _TOOL_CATEGORY: Dict[str, str] = {
     "fetch_efficiency_detail": "monitor",
     "fetch_energy_range": "export",
     "fetch_alarm_history": "alarm",
-    "query_timedit_forecast": "energy",
-    "verify_physics_consistency": "energy",
-    "fetch_aidc_cooling_status": "monitor",
-    "parse_business_intent": "energy",
     "navigate_to_page": "general",
     "export_data_table": "export",
 }
 
 # 工具名 → AgentState 字段映射
 _TOOL_FIELD_MAP: Dict[str, str] = {
-    "query_timedit_forecast": "timedit_data",
-    "verify_physics_consistency": "physics_verification",
-    "fetch_aidc_cooling_status": "aidc_cooling",
-    "parse_business_intent": "constraints",
     "query_hvac_knowledge": "hvac_knowledge",
 }
 
@@ -60,6 +52,23 @@ def _load_prompts() -> Dict[str, Any]:
     if not _prompts and _PROMPTS_PATH.exists():
         with open(_PROMPTS_PATH, "r", encoding="utf-8") as f:
             _prompts = yaml.safe_load(f) or {}
+        # 注入共享片段（_shared.answer_principles / _shared.jump_rules）
+        shared = _prompts.get("_shared", {})
+        if shared:
+            principles = shared.get("answer_principles", "")
+            jump_rules = shared.get("jump_rules", "")
+            for key in ("cognitive_parser", "interpreter_generator"):
+                system = _prompts.get(key, {}).get("system", "")
+                if principles and "## 回答原则" not in system:
+                    # 找到第一个空行之后的位置插入回答原则
+                    parts = system.split("\n\n", 1)
+                    if len(parts) == 2:
+                        system = parts[0] + f"\n\n## 回答原则\n{principles}" + parts[1]
+                    else:
+                        system += f"\n## 回答原则\n{principles}"
+                if jump_rules and "## 页面跳转说明" not in system:
+                    system += f"\n## 页面跳转说明\n{jump_rules}"
+                _prompts[key]["system"] = system
     return _prompts
 
 
@@ -297,23 +306,21 @@ def interpreter_generator_node(state: AgentState) -> Dict[str, Any]:
         # 拒答模式：替换检索内容，避免 LLM 看到无关检索结果
         hvac_data = context_override
 
-    context = json.dumps(
-        {
-            "constraints": state.get("constraints"),
-            "timedit_data": state.get("timedit_data"),
-            "physics_verification": state.get("physics_verification"),
-            "aidc_cooling": state.get("aidc_cooling"),
-            "hvac_knowledge": hvac_data,
-        },
-        ensure_ascii=False,
-        indent=2,
-    )
+    context_data: Dict[str, Any] = {"hvac_knowledge": hvac_data}
+    constraints = state.get("constraints")
+    if constraints is not None:
+        context_data["constraints"] = constraints
+    physics_verification = state.get("physics_verification")
+    if physics_verification is not None:
+        context_data["physics_verification"] = physics_verification
+
+    context = json.dumps(context_data, ensure_ascii=False, indent=2)
 
     try:
         llm = _get_llm()
         response = llm.invoke([
             SystemMessage(content=system_content),
-            HumanMessage(content=f"以下是 V3 引擎返回的物理数据，请生成报告：\n{context}"),
+            HumanMessage(content=f"以下是工具层返回的数据，请生成报告：\n{context}"),
         ])
         return {"final_report": response.content}
     except Exception as e:

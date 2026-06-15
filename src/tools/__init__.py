@@ -42,17 +42,6 @@ TOOL_REGISTRY: Dict[str, Callable[..., Dict[str, Any]]] = {
 
 TOOL_SCHEMAS = [
     {
-        "name": "parse_business_intent",
-        "description": "将自然语言输入解析为结构化业务意图（ConstraintMatrix）",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "user_input": {"type": "string", "description": "用户自然语言输入"},
-            },
-            "required": ["user_input"],
-        },
-    },
-    {
         "name": "query_hvac_knowledge",
         "description": "从暖通空调（HVAC）专业知识库检索相关问答，用于回答暖通规范、能效计算、故障诊断、节能优化等专业问题",
         "parameters": {
@@ -77,14 +66,14 @@ TOOL_SCHEMAS = [
     },
     {
         "name": "fetch_energy_summary",
-        "description": "获取站点单日能耗汇总数据，包括总用电量、光伏发电、电网取电、储能充放电、碳减排等",
+        "description": "获取站点单日能耗汇总（优先使用此工具回答能耗问题）：总用电量、光伏发电、电网取电、储能充放电、峰值/平均负荷、碳减排。包含完整光储充分项。用户问'能耗''用电量+光伏''全厂能源'等都应调用此工具",
         "parameters": {
             "type": "object",
             "properties": {
                 "site_id": {"type": "string", "description": "站点 ID，如 FJJB000001"},
-                "date": {"type": "string", "description": "统计日期，格式 YYYY-MM-DD"},
+                "date": {"type": "string", "description": "统计日期，格式 YYYY-MM-DD，默认今天"},
             },
-            "required": ["site_id", "date"],
+            "required": ["site_id"],
         },
     },
     {
@@ -134,7 +123,7 @@ TOOL_SCHEMAS = [
     },
     {
         "name": "fetch_energy_usage",
-        "description": "获取全厂用电量：今日用电量(kWh)、本月用电量(kWh)、环比昨日/上月百分比。回答用电量、电费、用电趋势时使用",
+        "description": "获取全厂用电量（仅总用电量，不含光伏/储能分项）：今日用电量(kWh)、本月用电量(kWh)、环比百分比。仅回答纯用电量问题时使用。需要光伏/储能/电网分项数据请用 fetch_energy_summary",
         "parameters": {
             "type": "object",
             "properties": {

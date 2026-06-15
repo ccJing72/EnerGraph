@@ -205,14 +205,15 @@ def _query_point_group_names(point_names: list, device_code: str = "") -> Dict[s
 # ── COP 数据 ──────────────────────────────────────────────────────
 
 def fetch_cop_data(site_id: str, chiller_id: str = "CH-01") -> Dict[str, Any]:
-    """获取冷水机房 COP（能效比）数据。
+    """获取冷水机房 COP（能效比）数据 + 机组运行参数（温度/功率）。
 
-    真实 API: POST /analysisWeb/efficiencyQuery/v1/queryPointEnergyEfficiency
-    返回机房COP（水系统平均COP）：冷水机+水泵+冷却塔整体能效。
+    组合两个真实 API:
+    - getValueByPointGroupNames: 机房级 COP（水系统累计/瞬时）
+    - getDeviceRunningInfo: 机组级运行数据（蒸发器/冷凝器温度、实时功率）
 
     Args:
         site_id: 站点 ID（如 FJJB000001）
-        chiller_id: 冷水机组编号（保留兼容）
+        chiller_id: 冷水机组编号（CH-01 或 CH-02）
 
     Returns:
         COPData 的 dict 表示
@@ -220,18 +221,56 @@ def fetch_cop_data(site_id: str, chiller_id: str = "CH-01") -> Dict[str, Any]:
     try:
         if not _is_mock():
             site_config = _get_site_config(site_id)
+
+            # 1. 获取机房级 COP
             point_names = site_config.get("cop_point_names", [
                 "水系统累计COP", "水系统瞬时COP"
             ])
-            api_data = _query_point_group_names(point_names)
+            cop_data = _query_point_group_names(point_names)
+            instant_cop = float(cop_data.get("水系统瞬时COP", 0))
+            cumulative_cop = float(cop_data.get("水系统累计COP", 0))
+
+            # 2. 获取机组级运行数据（温度/功率）
+            chiller_ids = site_config.get("chiller_device_ids", {})
+            device_id = chiller_ids.get(chiller_id)
+            chilled_water_out_temp = 0.0
+            cooling_water_in_temp = 0.0
+            power_kw = 0.0
+
+            if device_id:
+                try:
+                    running_info = _api_post(
+                        "/integrateMonitor/device/running/getDeviceRunningInfo",
+                        {"deviceId": device_id}
+                    )
+                    # 解析蒸发器温度
+                    evaporator = running_info.get("YXSJ-ZFQ", {}).get("YXSJ-ZFQ", [])
+                    for item in evaporator:
+                        if item.get("propertyName") == "蒸发器出水温度":
+                            chilled_water_out_temp = float(item.get("propertyValue", 0))
+
+                    # 解析冷凝器温度
+                    condenser = running_info.get("YXSJ-LNQ", {}).get("YXSJ-LNQ", [])
+                    for item in condenser:
+                        if item.get("propertyName") == "冷凝器进水温度":
+                            cooling_water_in_temp = float(item.get("propertyValue", 0))
+
+                    # 解析实时功率
+                    overall = running_info.get("ZT", {}).get("ZT", [])
+                    for item in overall:
+                        if item.get("propertyName") == "机组实时功率":
+                            power_kw = float(item.get("propertyValue", 0))
+                except Exception as e:
+                    logger.warning(f"getDeviceRunningInfo 失败，温度/功率字段为 0: {e}")
+
             return COPData(
                 site_id=site_id,
                 chiller_id=chiller_id,
-                instant_cop=float(api_data.get("水系统瞬时COP", 0)),
-                cumulative_cop=float(api_data.get("水系统累计COP", 0)),
-                chilled_water_out_temp=0.0,
-                cooling_water_in_temp=0.0,
-                power_kw=0.0,
+                instant_cop=instant_cop,
+                cumulative_cop=cumulative_cop,
+                chilled_water_out_temp=chilled_water_out_temp,
+                cooling_water_in_temp=cooling_water_in_temp,
+                power_kw=power_kw,
                 timestamp=datetime.now(timezone.utc).isoformat(),
                 status="normal",
             ).model_dump()
@@ -255,47 +294,77 @@ def fetch_cop_data(site_id: str, chiller_id: str = "CH-01") -> Dict[str, Any]:
 
 # ── 能耗汇总 ──────────────────────────────────────────────────────
 
-def fetch_energy_summary(site_id: str, date: str) -> Dict[str, Any]:
+def fetch_energy_summary(site_id: str, date: str = "") -> Dict[str, Any]:
     """获取站点单日能耗汇总数据。
+
+    组合真实 API: supplyAndDemandList（按小时供需数据：电网/光伏/储能充放电/负荷/卖电）
 
     Args:
         site_id: 站点 ID（如 FJJB000001）
-        date: 统计日期，格式 YYYY-MM-DD
+        date: 统计日期，格式 YYYY-MM-DD，默认今天
 
     Returns:
         EnergySummary 的 dict 表示
     """
     try:
-        if not _is_mock():
-            site_config = _get_site_config(site_id)
-            if not site_config:
-                return {"error": f"未找到站点 {site_id} 的配置"}
+        if not date:
+            date = datetime.now().strftime("%Y-%m-%d")
 
-            payload = {
-                "nodeId": site_id,
-                "nodeName": site_config["name"],
-                "deviceType": site_config["device_type"],
-                "classificationCode": site_config["classification_code"],
-                "classificationName": site_config["classification_name"],
-                "deviceName": site_config["device_name"],
-                "dimension": "day",
-                "startTime": f"{date} 00:00:00",
-                "endTime": f"{date} 23:59:59",
-                "deviceCodes": site_config["device_codes"],
-                "deviceLevel": site_config["device_level"],
-            }
-            api_data = _api_post("/analysisWeb/energyAnalysis/v1/ECInfo", payload)
+        if not _is_mock():
+            # 1. 获取日度供需数据（按小时）
+            supply_data = _api_get(
+                "/integrateMonitor/photovoltaicStorage/supplyAndDemandList",
+                {"date": date}
+            )
+
+            # 2. 汇总各分项（每小时数据，value 单位 kW，×1h = kWh）
+            total_grid = 0.0      # 电网取电
+            total_pv = 0.0        # 光伏发电
+            total_charge = 0.0    # 储能充电
+            total_discharge = 0.0 # 储能放电
+            total_load = 0.0      # 用电负荷
+            total_sell = 0.0      # 上网卖电
+            peak_load = 0.0       # 峰值负荷
+            loads = []
+
+            for hour in supply_data:
+                for item in hour.get("supplyList", []):
+                    code = item.get("code", "")
+                    val = float(item.get("value", 0))
+                    if code == "powerGrid":
+                        total_grid += val
+                    elif code == "photovoltaic":
+                        total_pv += val
+                    elif code == "energyStorageDischarge":
+                        total_discharge += val
+
+                for item in hour.get("demandList", []):
+                    code = item.get("code", "")
+                    val = float(item.get("value", 0))
+                    if code == "energyStorageCharge":
+                        total_charge += val
+                    elif code == "electricalLoad":
+                        total_load += val
+                        loads.append(val)
+                        peak_load = max(peak_load, val)
+                    elif code == "powerGridSale":
+                        total_sell += val
+
+            avg_load = sum(loads) / len(loads) if loads else 0.0
+            # 碳减排 = 光伏发电量 × 0.57 kgCO₂e/kWh（国标排放因子）
+            carbon_reduction = total_pv * 0.57
+
             return EnergySummary(
                 site_id=site_id,
                 date=date,
-                total_consumption_kwh=api_data.get("totalEnergy", 0.0),
-                pv_generation_kwh=0.0,
-                grid_import_kwh=api_data.get("totalEnergy", 0.0),
-                storage_charge_kwh=0.0,
-                storage_discharge_kwh=0.0,
-                peak_load_kw=api_data.get("maxEnergy", 0.0),
-                avg_load_kw=api_data.get("avgEnergy", 0.0),
-                carbon_reduction_kg=api_data.get("totalEnergy", 0.0) * api_data.get("carbonCoefficient", 0.0),
+                total_consumption_kwh=total_load,
+                pv_generation_kwh=total_pv,
+                grid_import_kwh=total_grid,
+                storage_charge_kwh=total_charge,
+                storage_discharge_kwh=total_discharge,
+                peak_load_kw=peak_load,
+                avg_load_kw=round(avg_load, 2),
+                carbon_reduction_kg=round(carbon_reduction, 2),
             ).model_dump()
 
         # Mock fallback
