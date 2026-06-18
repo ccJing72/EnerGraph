@@ -70,3 +70,6 @@ temp/
 data/
 docs/周报_*.md
 docs/演示文档_*.md
+
+# OpenAI Codex CLI config
+.codex/
