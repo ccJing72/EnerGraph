@@ -287,7 +287,8 @@ interface AgentRequest {
 /** UI 动作 */
 interface UIAction {
   type: string;        // "navigate" | "highlight" | "open_panel"（后续扩展）
-  route: string;       // 目标路由
+  route: string;       // 目标路由（始终以 / 开头，如 "/analysis/consumption-panel"）
+  name: string;        // 页面名称（如 "能耗分析"、"设备运行"），从 routes.yaml 自动填充
   params: Record<string, unknown>;
   meta: Record<string, unknown>;
 }
@@ -603,11 +604,22 @@ Agent 返回的 `action` 中，`type: "navigate"` 表示建议前端跳转到某
 ```json
 {
   "type": "navigate",
-  "route": "/chiller-room/detail",
-  "params": { "site_id": "FJJB000001", "chiller_id": "CW-01" },
+  "route": "/analysis/consumption-panel",
+  "name": "能耗分析",
+  "params": { "site_id": "FJJB000001", "date": "2026-06-17" },
   "meta": {}
 }
 ```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `type` | `string` | 动作类型，当前固定 `"navigate"` |
+| `route` | `string` | 目标路由路径，始终以 `/` 开头 |
+| `name` | `string` | 页面名称（如"能耗分析"、"设备运行"），可直接用于 UI 展示 |
+| `params` | `object` | 路由参数（如 site_id, date） |
+| `meta` | `object` | UI 元数据（预留扩展） |
+
+> **提示**: `name` 字段由后端根据 `routes.yaml` 自动填充，前端可直接用于显示，无需自行维护路由→名称映射表。
 
 ### 8.2 前端处理策略
 

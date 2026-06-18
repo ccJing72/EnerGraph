@@ -320,11 +320,11 @@ EnerGraph/
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-17 | Action 跳转优化 + 储能数据修复：UIAction 新增 name 字段 + 路由格式标准化 + 修复无工具调用时只有 thinking 没有 text + fetch_energy_summary 新增储能充放电/电网交互数据 | 魏博源 |
 | 2026-06-15 | 重构后代码同步审阅：移除 nodes.py 冗余注入、删除旧 prompts.yaml、修复 v3_interpreter 注释、24 文件头 V3→算法层、测试 docstring 更新 | 魏博源 |
 | 2026-06-15 | 清理硬编码 prompts.yaml 引用：nodes.py/parse_intent.py/base_skill.py 改为 settings.prompts；4 个 Skills 文件头更新 | 魏博源 |
 | 2026-06-15 | 多智能体 Subgraph 架构重构：BaseAgent + AGENT_REGISTRY + 3 Agent 子图 + Prompt 拆分 5 文件 + TEAM_COLLABORATION_GUIDE.md | 魏博源 |
 | 2026-06-15 | SSE 协议升级（细粒度事件类型）+ 前端思考过程折叠 | 魏博源 |
-| 2026-06-12 | 新增 PRD.md + MCP_INTERFACE_SPEC.md + Prompt 精简优化 + 老架构清理 + API 交付 + Token 自动刷新 | 魏博源 |
 
 > 更早历史见 `CHANGELOG.md` 或 `git log`。
 

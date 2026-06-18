@@ -248,12 +248,15 @@ if user_input:
                     for action in pending_actions:
                         if isinstance(action, dict):
                             route = action.get("route", "")
+                            name = action.get("name", "")
                             params = action.get("params", {})
                         else:
                             route = action.route
+                            name = action.name
                             params = action.params
 
-                        route_name = _ROUTE_NAMES.get(route, route)
+                        # 优先使用 action 自带的 name，其次查路由表
+                        route_name = name or _ROUTE_NAMES.get(route, route)
 
                         param_str = ", ".join([f"{k}={v}" for k, v in params.items()])
                         st.info(f"🎯 **{route_name}** ({route})\n\n参数: {param_str}")
@@ -292,7 +295,8 @@ if user_input:
                 links = []
                 for action in pending_actions:
                     route = action.route if hasattr(action, "route") else action.get("route", "")
-                    name = _ROUTE_NAMES.get(route, route)
+                    action_name = action.name if hasattr(action, "name") else action.get("name", "")
+                    name = action_name or _ROUTE_NAMES.get(route, route)
                     full_url = f"https://aiot-fuca.com{route}"
                     links.append(f"[{name}]({full_url})")
                 final += f"\n\n---\n\n💡 **查看详细数据**：{' · '.join(links)}"
