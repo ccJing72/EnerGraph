@@ -50,6 +50,9 @@ class AgentState(TypedDict, total=False):
     page_context: Optional[PageContext]
     pending_actions: Annotated[List[UIAction], operator.add]
 
+    # 消息元数据（与 messages 一一对应，记录 timestamp / node 等信息）
+    message_metadata: Annotated[List[dict], operator.add]
+
     # 输出
     final_report: str
     error: Optional[str]
