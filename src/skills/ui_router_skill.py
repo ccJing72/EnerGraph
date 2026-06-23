@@ -115,8 +115,35 @@ def _build_tool_route_map() -> Dict[str, List[str]]:
     return tool_map
 
 
+def _build_route_name_map() -> Dict[str, str]:
+    """从 routes.yaml 构建路由路径→页面名称映射。
+
+    Returns:
+        {"/analysis/consumption-panel": "能耗分析", ...}
+    """
+    name_map: Dict[str, str] = {}
+    routes_config = settings.routes
+    all_routes = routes_config.get("accessible_routes", []) + routes_config.get("restricted_routes", [])
+    for route in all_routes:
+        name_map[route["path"]] = route.get("name", "")
+    return name_map
+
+
+def _normalize_route(route: str) -> str:
+    """标准化路由路径，确保以 / 开头。
+
+    Args:
+        route: 原始路由路径
+
+    Returns:
+        标准化后的路由（如 "smart-maintenance/xxx" → "/smart-maintenance/xxx"）
+    """
+    return route if route.startswith("/") else f"/{route}"
+
+
 # 启动时从 routes.yaml 构建一次
 _TOOL_ROUTE_MAP: Dict[str, List[str]] = _build_tool_route_map()
+_ROUTE_NAME_MAP: Dict[str, str] = _build_route_name_map()
 
 
 class UIRouterSkill(BaseSkill):
@@ -181,6 +208,7 @@ class UIRouterSkill(BaseSkill):
 
         支持多意图场景，可返回多个 UIAction（按工具调用顺序排列）。
         相同路由只保留第一个，避免重复跳转。
+        所有路由标准化为 / 开头，并自动填充页面名称。
 
         Args:
             tool_results: [(tool_name, result_dict, args_dict), ...]
@@ -195,12 +223,19 @@ class UIRouterSkill(BaseSkill):
         for name, result, args in tool_results:
             if name == "navigate_to_page" and "error" not in result:
                 try:
-                    action = UIAction(**result)
-                    if action.route not in seen_routes:
-                        seen_routes.add(action.route)
+                    # 标准化路由格式（确保以 / 开头）
+                    raw_route = result.get("route", "")
+                    normalized_route = _normalize_route(raw_route)
+                    result_copy = {**result, "route": normalized_route}
+                    # 自动填充页面名称
+                    if not result_copy.get("name"):
+                        result_copy["name"] = _ROUTE_NAME_MAP.get(normalized_route, "")
+                    action = UIAction(**result_copy)
+                    if normalized_route not in seen_routes:
+                        seen_routes.add(normalized_route)
                         actions.append(action)
                         logger.info(
-                            f"UIRouterSkill: 采用 LLM 显式跳转 → {action.route}"
+                            f"UIRouterSkill: 采用 LLM 显式跳转 → {action.route} ({action.name})"
                         )
                 except Exception as e:
                     logger.warning(f"UIRouterSkill: navigate_to_page 结果解析失败: {e}")
@@ -210,13 +245,20 @@ class UIRouterSkill(BaseSkill):
             routes = _TOOL_ROUTE_MAP.get(name)
             if routes and "error" not in result:
                 for route in routes:
-                    if route not in seen_routes:
-                        seen_routes.add(route)
+                    normalized_route = _normalize_route(route)
+                    if normalized_route not in seen_routes:
+                        seen_routes.add(normalized_route)
                         params = {k: v for k, v in args.items() if v is not None}
-                        action = UIAction(type="navigate", route=route, params=params)
+                        route_name = _ROUTE_NAME_MAP.get(normalized_route, "")
+                        action = UIAction(
+                            type="navigate",
+                            route=normalized_route,
+                            name=route_name,
+                            params=params,
+                        )
                         actions.append(action)
                         logger.info(
-                            f"UIRouterSkill: 根据 {name} 自动推断跳转 → {route}"
+                            f"UIRouterSkill: 根据 {name} 自动推断跳转 → {normalized_route} ({route_name})"
                         )
 
         return actions

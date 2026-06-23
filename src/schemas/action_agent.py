@@ -34,7 +34,8 @@ class UIAction(BaseModel):
     params 承载路由参数，meta 承载 UI 层元数据。
     """
     type: str = Field(default="navigate", description="动作类型：navigate / highlight / open_panel（后续前端分析追加）")
-    route: str = Field(..., description="目标路由，子页面用 /parent/child 形式")
+    route: str = Field(..., description="目标路由，子页面用 /parent/child 形式，始终以 / 开头")
+    name: str = Field(default="", description="页面名称（如'能耗分析'、'设备运行'），从 routes.yaml 自动填充")
     params: dict = Field(default_factory=dict, description="路由参数（如 site_id, chiller_id）")
     meta: dict = Field(default_factory=dict, description="UI 元数据（面包屑、查询参数、高亮目标等，后续前端分析追加）")
 

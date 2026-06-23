@@ -179,3 +179,90 @@ async def test_page_context_fallback_none_site_id():
     system_msg = next((m for m in messages if hasattr(m, "type") and m.type == "system"), None)
     assert system_msg is not None
     assert "未指定" in system_msg.content, "site_id=None 时应显示'未指定'"
+
+
+# ── UIAction 路由标准化和名称填充测试 ─────────────────────────────────
+
+
+def test_ui_action_has_name_field():
+    """验证 UIAction 模型包含 name 字段。"""
+    from src.schemas.action_agent import UIAction
+
+    action = UIAction(route="/analysis/consumption-panel", name="能耗分析")
+    assert action.name == "能耗分析"
+    assert action.route == "/analysis/consumption-panel"
+
+
+def test_ui_action_name_defaults_to_empty():
+    """验证 UIAction name 字段默认为空字符串（向后兼容）。"""
+    from src.schemas.action_agent import UIAction
+
+    action = UIAction(route="/analysis/consumption-panel")
+    assert action.name == ""
+
+
+def test_infer_navigation_normalizes_routes():
+    """验证路由标准化：无 / 前缀的路由会被补全。"""
+    from src.skills.ui_router_skill import UIRouterSkill
+
+    # 模拟 LLM 返回无 / 前缀的路由
+    tool_results = [
+        ("navigate_to_page", {"route": "smart-maintenance/equipment-operation"}, {}),
+    ]
+
+    actions = UIRouterSkill._infer_navigation(tool_results)
+    assert len(actions) == 1
+    assert actions[0].route == "/smart-maintenance/equipment-operation"
+
+
+def test_infer_navigation_deduplicates_normalized_routes():
+    """验证路由去重：标准化后相同的路由只保留一个。"""
+    from src.skills.ui_router_skill import UIRouterSkill
+
+    # 模拟 LLM 同时调用 navigate_to_page（无 /）和工具自动推断（有 /）
+    tool_results = [
+        ("navigate_to_page", {"route": "analysis/consumption-panel"}, {}),
+        ("fetch_energy_summary", {"total_consumption_kwh": 4083.5}, {"site_id": "FJJB000001"}),
+    ]
+
+    actions = UIRouterSkill._infer_navigation(tool_results)
+
+    # 检查 /analysis/consumption-panel 只出现一次
+    consumption_panel_count = sum(
+        1 for a in actions if a.route == "/analysis/consumption-panel"
+    )
+    assert consumption_panel_count == 1, f"路由 /analysis/consumption-panel 出现 {consumption_panel_count} 次，应为 1 次"
+
+
+def test_infer_navigation_fills_name_from_routes():
+    """验证路由名称自动填充。"""
+    from src.skills.ui_router_skill import UIRouterSkill
+
+    tool_results = [
+        ("fetch_energy_summary", {"total_consumption_kwh": 4083.5}, {"site_id": "FJJB000001"}),
+    ]
+
+    actions = UIRouterSkill._infer_navigation(tool_results)
+
+    # fetch_energy_summary 映射到两个页面：能耗分析 + 光储实时能量
+    assert len(actions) == 2
+    routes = {a.route: a.name for a in actions}
+    assert routes.get("/analysis/consumption-panel") == "能耗分析"
+    assert routes.get("/coordination/energy") == "光储实时能量"
+
+
+def test_infer_navigation_no_duplicate_same_route():
+    """验证完全相同的路由不会重复出现。"""
+    from src.skills.ui_router_skill import UIRouterSkill
+
+    # 模拟多次工具调用可能产生相同路由
+    tool_results = [
+        ("navigate_to_page", {"route": "/analysis/consumption-panel"}, {}),
+        ("navigate_to_page", {"route": "/analysis/consumption-panel"}, {}),  # 重复
+    ]
+
+    actions = UIRouterSkill._infer_navigation(tool_results)
+
+    # 应该只有一个 /analysis/consumption-panel
+    assert len(actions) == 1
+    assert actions[0].route == "/analysis/consumption-panel"

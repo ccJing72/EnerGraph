@@ -336,17 +336,34 @@ def fetch_energy_summary(site_id: str, date: str = "") -> Dict[str, Any]:
             avg_load = float(ec_data.get("avgEnergy", 0))
             carbon_coeff = float(ec_data.get("carbonCoefficient", 0.7703))
 
-            # 2. 光伏使用 realTimePowerList（15分钟级，与 fetch_photovoltaic_daily 一致）
+            # 2. 光伏 + 储能 + 电网交互：使用 realTimePowerList（15分钟级功率数据）
+            #    与 fetch_photovoltaic_daily 一致，功率(kW) × 0.25h = 能量(kWh)
             rt_data = _api_get(
                 "/integrateMonitor/photovoltaicStorage/realTimePowerList",
                 {"date": date}
             )
             total_pv = 0.0
+            storage_charge = 0.0
+            storage_discharge = 0.0
+            grid_import = 0.0
+
             for point in rt_data:
                 for item in point.get("powerInfoList", []):
-                    if item.get("code") == "photovoltaic":
-                        # 光伏 value 为负值（发电输出），取绝对值；功率 × 0.25h = 能量
-                        total_pv += abs(float(item.get("value", 0))) * 0.25
+                    code = item.get("code")
+                    value = float(item.get("value", 0))
+                    if code == "photovoltaic":
+                        # 光伏 value 为负值（发电输出），取绝对值
+                        total_pv += abs(value) * 0.25
+                    elif code == "energyStorage":
+                        # 储能：正值=充电，负值=放电
+                        if value > 0:
+                            storage_charge += value * 0.25
+                        elif value < 0:
+                            storage_discharge += abs(value) * 0.25
+                    elif code == "powerGrid":
+                        # 电网交互：正值=取电，负值=反馈
+                        if value > 0:
+                            grid_import += value * 0.25
 
             # 碳减排 = 光伏发电量 × 0.57 kgCO₂e/kWh（国标排放因子）
             carbon_reduction = total_pv * 0.57
@@ -356,9 +373,9 @@ def fetch_energy_summary(site_id: str, date: str = "") -> Dict[str, Any]:
                 date=date,
                 total_consumption_kwh=total_consumption,
                 pv_generation_kwh=round(total_pv, 1),
-                grid_import_kwh=total_consumption,  # ECInfo 不区分电网/光伏，totalEnergy 即设备总用电
-                storage_charge_kwh=0.0,  # ECInfo 不含储能分项
-                storage_discharge_kwh=0.0,
+                grid_import_kwh=round(grid_import, 1),
+                storage_charge_kwh=round(storage_charge, 1),
+                storage_discharge_kwh=round(storage_discharge, 1),
                 peak_load_kw=peak_load,
                 avg_load_kw=round(avg_load, 2),
                 carbon_reduction_kg=round(carbon_reduction, 2),

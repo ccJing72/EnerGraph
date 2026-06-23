@@ -145,6 +145,8 @@ async def _sse_generator(input_data: ActionAgentInput) -> AsyncIterator[str]:
     rag_sent = False       # RAG 来源是否已发送
     tools_called = False   # 是否已发送过 tool_call（区分 thinking vs text）
     tool_call_map = {}     # tool_call_id → tool_name 映射
+    text_emitted = False   # 是否已发送过 text 事件
+    thinking_buffer = ""   # 缓存 thinking 内容（用于无工具调用时转为 text）
 
     try:
         async for event in graph.astream_events(initial_state, version="v2"):
@@ -159,12 +161,15 @@ async def _sse_generator(input_data: ActionAgentInput) -> AsyncIterator[str]:
                     if node == "cognitive_parser":
                         if tools_called:
                             # 工具已调用后的 cognitive_parser 输出 = 最终回答
+                            text_emitted = True
                             yield f"event: text\ndata: {json.dumps({'text': chunk.content}, ensure_ascii=False)}\n\n"
                         else:
                             # 工具调用前的 cognitive_parser 输出 = 思考过程
+                            thinking_buffer += chunk.content
                             yield f"event: thinking\ndata: {json.dumps({'text': chunk.content}, ensure_ascii=False)}\n\n"
                     elif node == "interpreter_generator":
                         # interpreter_generator 的输出也是最终回答
+                        text_emitted = True
                         yield f"event: text\ndata: {json.dumps({'text': chunk.content}, ensure_ascii=False)}\n\n"
 
             # ── 工具调用：从 cognitive_parser 的 tool_calls ──
@@ -229,6 +234,11 @@ async def _sse_generator(input_data: ActionAgentInput) -> AsyncIterator[str]:
     except Exception as e:
         logger.error(f"SSE 流式推送失败: {e}")
         yield f"event: error\ndata: {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
+
+    # 无工具调用时，cognitive_parser 的输出即为最终回答，补发为 text 事件
+    # 场景：用户问通用问题，LLM 直接回答不调用工具
+    if not text_emitted and thinking_buffer:
+        yield f"event: text\ndata: {json.dumps({'text': thinking_buffer}, ensure_ascii=False)}\n\n"
 
     yield "event: done\ndata: {}\n\n"
 

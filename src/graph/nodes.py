@@ -6,6 +6,7 @@
 """
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
@@ -43,6 +44,21 @@ _TOOL_CATEGORY: Dict[str, str] = {
 _TOOL_FIELD_MAP: Dict[str, str] = {
     "query_hvac_knowledge": "hvac_knowledge",
 }
+
+
+def _make_metadata(node: str, role: str, count: int = 1) -> list:
+    """为即将追加的消息生成 metadata 条目。
+
+    Args:
+        node: 产生消息的节点名（如 'cognitive_parser'）
+        role: 消息角色（'system' / 'user' / 'assistant' / 'tool'）
+        count: 生成的条目数量（与 messages 列表长度对应）
+
+    Returns:
+        metadata dict 列表，与 messages 一一对应
+    """
+    ts = datetime.now(timezone.utc).isoformat()
+    return [{"timestamp": ts, "node": node, "role": role}] * count
 
 
 def _load_prompts() -> Dict[str, Any]:
@@ -164,7 +180,14 @@ def cognitive_parser_node(state: AgentState) -> Dict[str, Any]:
         response: AIMessage = llm.invoke(messages)
 
         # Phase 7: 若 LLM 输出多个 tool_calls，自动构建 intent_plan
-        updates: Dict[str, Any] = {"messages": [*messages, response]}
+        updates: Dict[str, Any] = {
+            "messages": [*messages, response],
+            "message_metadata": (
+                _make_metadata("cognitive_parser", "system", 1)
+                + _make_metadata("cognitive_parser", "user", 1)
+                + _make_metadata("cognitive_parser", "assistant", 1)
+            ),
+        }
         tool_calls = getattr(response, "tool_calls", None) or []
         if len(tool_calls) > 1:
             from src.schemas.v3_engine import IntentItem
@@ -183,7 +206,12 @@ def cognitive_parser_node(state: AgentState) -> Dict[str, Any]:
         return updates
     except Exception as e:
         logger.error(f"cognitive_parser_node 失败: {e}")
-        return {"messages": messages, "error": str(e)}
+        return {
+            "messages": messages,
+            "message_metadata": _make_metadata("cognitive_parser", "system", 1)
+                              + _make_metadata("cognitive_parser", "user", 1),
+            "error": str(e),
+        }
 
 
 def v3_engine_router_node(state: AgentState) -> Dict[str, Any]:
@@ -239,7 +267,11 @@ def v3_engine_router_node(state: AgentState) -> Dict[str, Any]:
         updates.update(skill_updates)
         logger.info(f"Skill {skill.name} 执行完毕，更新字段: {list(skill_updates.keys())}")
 
-    return {"messages": tool_messages, **updates}
+    return {
+        "messages": tool_messages,
+        "message_metadata": _make_metadata("v3_engine_router", "tool", len(tool_messages)),
+        **updates,
+    }
 
 
 def interpreter_generator_node(state: AgentState) -> Dict[str, Any]:

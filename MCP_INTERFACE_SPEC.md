@@ -22,17 +22,23 @@
 
 ## 2. 接口清单
 
-| # | 模型名称 | MCP Tool Name | 类型 | 优先级 | 对接 Skill |
-|---|---------|--------------|------|--------|-----------|
-| 1 | 电负荷预测 | `predict_load` | 预测 | P0 | energy_dispatch |
-| 2 | 光伏出力预测 | `predict_solar` | 预测 | P0 | energy_dispatch |
-| 3 | 电价预测 | `predict_electricity_price` | 预测 | P1 | energy_dispatch |
-| 4 | 冷负荷预测 | `predict_cooling_load` | 预测 | P1 | — |
-| 5 | 碳排放预测 | `predict_carbon` | 预测 | P2 | — |
-| 6 | 设备健康诊断 | `diagnose_equipment` | 诊断 | P1 | — |
-| 7 | 机房能效诊断 | `diagnose_room_efficiency` | 诊断 | P2 | — |
-| 8 | 制冷系统寻优 | `optimize_cooling` | 优化 | P1 | — |
-| 9 | 储能调度优化 | `optimize_dispatch` | 优化 | P0 | energy_dispatch |
+| # | 模型名称 | MCP Tool Name | 类型 | 优先级 | 调用方 |
+|---|---------|--------------|------|--------|--------|
+| 1 | 电负荷预测 | `predict_load` | 预测 | P0 | **Agent 直接调用**（单预测查询）+ optimize_dispatch 内部调用 |
+| 2 | 光伏出力预测 | `predict_solar` | 预测 | P0 | **Agent 直接调用**（单预测查询）+ optimize_dispatch 内部调用 |
+| 3 | 电价预测 | `predict_electricity_price` | 预测 | P1 | **Agent 直接调用**（电价趋势查询）+ optimize_dispatch 内部调用 |
+| 4 | 冷负荷预测 | `predict_cooling_load` | 预测 | P1 | Agent 直接调用 |
+| 5 | 碳排放预测 | `predict_carbon` | 预测 | P2 | Agent 直接调用 |
+| 6 | 设备健康诊断 | `diagnose_equipment` | 诊断 | P1 | Agent 直接调用 |
+| 7 | 机房能效诊断 | `diagnose_room_efficiency` | 诊断 | P2 | Agent 直接调用 |
+| 8 | 制冷系统寻优 | `optimize_cooling` | 优化 | P1 | Agent 直接调用 |
+| 9 | 储能调度优化 | `optimize_dispatch` | 优化 | P0 | **Agent 直接调用**（PowerAI 核心） |
+
+> **双路径调用设计**：
+> - **单预测查询路径**：用户问"明天预计用多少电"、"光伏发电趋势"等单一预测问题时，Agent 直接调用对应的预测模型（#1-5），返回简洁预测结果。
+> - **综合调度路径**：用户问"给我出个充放电策略"时，Agent 只需调用 `optimize_dispatch`（#9），由优化模型内部自行调用各预测模型获取数据，综合计算后返回候选方案。Agent 无需分别获取预测数据再拼装传入——这降低了编排复杂度，也让优化模型可独立迭代预测策略。
+>
+> 两条路径并存，Agent 按用户意图智能选择。
 
 ---
 
@@ -322,14 +328,13 @@
 
 > DQN/PPO + NSGA-II 多目标帕累托优化
 
+**设计原则**：预测模型（负荷/光伏/电价）作为本模型的内部依赖，由优化模型自行调用。Agent 只需传入站点 ID、电池状态和业务约束，无需分别获取预测数据再拼装传入。
+
 **输入**：
 ```json
 {
   "site_id": "FJJB000001",
   "target_date": "2026-06-15",
-  "load_forecast_kw": [420, 380, 350, 340, 500, 800, 1200, 1580, 1400, 1100],
-  "solar_forecast_kw": [0, 0, 0, 15, 50, 120, 175, 178, 160, 100],
-  "price_forecast_yuan_kwh": [0.35, 0.35, 0.35, 0.52, 0.72, 1.12, 1.12, 0.72, 0.52, 0.35],
   "battery_status": {
     "soc_percent": 30,
     "capacity_kwh": 1000,
@@ -350,6 +355,8 @@
   }
 }
 ```
+
+> **注**：`load_forecast_kw`、`solar_forecast_kw`、`price_forecast_yuan_kwh` 不再由 Agent 传入，由优化模型内部调用 predict_load / predict_solar / predict_electricity_price 获取。如优化模型实现上需要 Agent 侧传入预测数据（例如为降低优化模型外部依赖），可回退为显式传入模式。
 
 **输出**：
 ```json
